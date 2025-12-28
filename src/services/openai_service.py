@@ -15,57 +15,40 @@ class OpenAIService:
         self.calendar_instructions = self._load_calendar_instructions()
 
     def _load_candidate_instructions(self) -> str:
-        """Завантажує інструкції для парсингу кандидатів"""
+        """Loads instructions for parsing candidate data"""
         try:
-            path = os.path.join(os.path.dirname(__file__), "..", "instructions.txt")
+            path = os.path.join(os.path.dirname(__file__), "..", "prompts", "candidate.txt")
             with open(path, "r", encoding="utf-8") as f:
                 return f.read().strip()
         except FileNotFoundError:
             return "You are an HR Onboarding Assistant. Extract structured data from the user's input (resume text or candidate description). Return a valid JSON object with fields: firstName, lastName, jobTitle, department, emailNickname, personalEmail, phoneNumber, address. If no candidate data found, return {\"error\": \"No candidate data found\"}."
 
     def _load_intent_instructions(self) -> str:
-        """Інструкції для визначення наміру користувача"""
-        return """You are an intent classifier for an HR bot.
+        """Loads instructions for intent detection"""
+        try:
+            path = os.path.join(os.path.dirname(__file__), "..", "prompts", "intent.txt")
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            return """You are an intent classifier for an HR bot.
 Analyze the user's message and determine their intent.
 
 IMPORTANT RULES:
-1. "onboarding" - User provides NEW candidate/employee data (name, email, phone, job title, resume) AND wants to CREATE a new account. Keywords: "create account", "new employee", "new hire", "onboard", "candidate", resume data.
-2. "schedule_meeting" - User wants to schedule a meeting, book calendar, find time slot. Keywords: "schedule", "meeting", "book", "calendar", "@mention", "find time", "when available", "зустріч", "зустрітися", "запланувати", "признач ондобдинг для X на Y" (assign onboarding for X on Y), "assign onboarding to X on Y".
+1. "onboarding" - User provides NEW candidate/employee data (name, email, phone, job title, resume) AND wants to CREATE a new account.
+2. "schedule_meeting" - User wants to schedule a meeting, book calendar, find time slot.
 3. "chat" - Greetings, general questions, friendly conversation.
-4. "unknown" - Use ONLY when you cannot determine the user's intent with any confidence. Do not guess - if uncertain, use "unknown".
+4. "unknown" - Use ONLY when you cannot determine the user's intent with any confidence.
 
-CRITICAL: 
-- If message mentions "признач ондобдинг" (assign onboarding) or "assign onboarding" WITH a date/time (на понеділок, on Monday, tomorrow, etc.) -> "schedule_meeting"
-- If message mentions "признач ондобдинг" WITHOUT date/time -> "schedule_meeting" (default to scheduling)
-- If message contains ONLY a name/person reference WITHOUT candidate data (email, phone, job title) AND mentions "assign", "признач" WITHOUT date -> could be "schedule_meeting" or "chat" depending on context
-
-Examples:
-- "Create account for John Doe, email: john@example.com, position: Developer" -> "onboarding"
-- "John Doe, john@example.com, Developer" -> "onboarding"  
-- "признач ондобдинг для Andriy Verbeko на понеділок" -> "schedule_meeting" (has date)
-- "признач ондобдинг для Andriy Verbeko" -> "schedule_meeting" (assign onboarding = schedule meeting)
-- "assign onboarding to John tomorrow" -> "schedule_meeting"
-- "Schedule meeting with @John tomorrow at 2pm" -> "schedule_meeting"
-- "Заплануй зустріч з Іваном завтра" -> "schedule_meeting"
-- "Привіт" -> "chat"
-- "Що ти вмієш?" -> "chat"
-- "asdfghjkl" (gibberish) -> "unknown"
-- "???" (unclear) -> "unknown"
-
-Return ONLY a JSON object with this structure:
+Return ONLY a valid JSON object with this structure:
 {
-    "intent": "onboarding" | "schedule_meeting" | "chat" | "unknown",
-    "entities": {}
-}
-
-If you cannot determine the user's intent with confidence, use "unknown" instead of guessing.
-
-DO NOT write any conversational text. DO NOT use markdown formatting. Just return the raw JSON string."""
+  "intent": "onboarding" | "schedule_meeting" | "chat" | "unknown",
+  "entities": {}
+}"""
 
     def _load_calendar_instructions(self) -> str:
-        """Завантажує інструкції для парсингу зустрічей"""
+        """Loads instructions for parsing meeting requests"""
         try:
-            path = os.path.join(os.path.dirname(__file__), "..", "instructions_calendar.txt")
+            path = os.path.join(os.path.dirname(__file__), "..", "prompts", "calendar.txt")
             with open(path, "r", encoding="utf-8") as f:
                 return f.read().strip()
         except FileNotFoundError:

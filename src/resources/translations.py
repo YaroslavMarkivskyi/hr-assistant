@@ -67,6 +67,8 @@ TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.greeting": "Hello, {name}!",
         "message.user_created": "✅ User **{email}** has been successfully created!",
         "message.meeting_scheduled": "📅 Meeting '{subject}' scheduled for {date} at {time}",
+        "message.module_in_development": "⚠️ {module} module is under development",
+        "message.feature_in_development": "⚠️ This feature is under development",
     },
     Language.UKRAINIAN: {
         # BotModule names
@@ -124,6 +126,8 @@ TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "message.greeting": "Привіт, {name}!",
         "message.user_created": "✅ Користувача **{email}** успішно створено!",
         "message.meeting_scheduled": "📅 Зустріч '{subject}' заплановано на {date} о {time}",
+        "message.module_in_development": "⚠️ Модуль {module} в розробці",
+        "message.feature_in_development": "⚠️ Ця функція в розробці",
     }
 }
 

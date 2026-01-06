@@ -30,6 +30,10 @@ def _simple_transliterate_uk_to_lat(text: str) -> str:
     return result
 
 class GraphService:
+    # Base URL for Microsoft Graph API
+    # Can be overridden for sovereign clouds (e.g., Government Cloud: graph.microsoft.us)
+    BASE_URL = "https://graph.microsoft.com/v1.0"
+    
     def __init__(self, config):
         self.client_id = config.APP_ID
         self.client_secret = config.APP_PASSWORD
@@ -37,6 +41,9 @@ class GraphService:
         # Якщо запускаємо локально без тенанта, використовуємо common (хоча краще мати ID)
         if not self.tenant_id:
             self.tenant_id = "common"
+        
+        # Allow custom BASE_URL for sovereign clouds
+        self.base_url = getattr(config, 'GRAPH_API_BASE_URL', None) or self.BASE_URL
         
         # SKU ID ліцензії для призначення новим користувачам
         # Microsoft 365 Business Basic: f30db892-07e9-47e9-837c-80727f46fd3d
@@ -350,15 +357,24 @@ class GraphService:
                 return {"success": False, "error": str(e)}
 
     def _transliterate_uk_to_en(self, text: str) -> str:
-        """Транслітерує український текст на англійську"""
+        """Транслітерує український текст на англійську з виправленнями для Azure AD"""
         try:
             if TRANSLITERATE_AVAILABLE:
-                return translit(text, 'uk', reversed=True)
+                transliterated = translit(text, 'uk', reversed=True)
             else:
-                return _simple_transliterate_uk_to_lat(text)
+                transliterated = _simple_transliterate_uk_to_lat(text)
         except Exception as e:
             print(f"⚠️ Помилка транслітерації: {e}")
-            return _simple_transliterate_uk_to_lat(text)
+            transliterated = _simple_transliterate_uk_to_lat(text)
+        
+        # Виправлення для Azure AD форматів
+        # Прибираємо апострофи та виправляємо загальні варіанти
+        transliterated = transliterated.replace("'", "")  # Прибираємо апострофи (Markivs'kyj -> Markivskyj)
+        transliterated = transliterated.replace("yj", "yi")  # Виправляємо закінчення (Markivskyj -> Markivskyi)
+        transliterated = transliterated.replace("ij", "iy")  # Виправляємо "ij" -> "iy" (Andrij -> Andriy)
+        transliterated = transliterated.replace("yy", "y")  # Виправляємо подвійні "y"
+        
+        return transliterated
     
     def _is_ukrainian_text(self, text: str) -> bool:
         """Перевіряє, чи текст містить українські літери"""
@@ -403,6 +419,26 @@ class GraphService:
                 
                 # Унікальні терміни для пошуку
                 all_search_terms = list(set(search_terms + name_parts))
+                
+                # Додаємо варіанти з виправленнями для Azure AD
+                additional_variants = []
+                for term in all_search_terms[:]:
+                    # Додаємо варіанти без апострофів
+                    if "'" in term:
+                        additional_variants.append(term.replace("'", ""))
+                    # Додаємо варіанти з "yi" замість "yj"
+                    if "yj" in term.lower() or "Yj" in term:
+                        additional_variants.append(term.replace("yj", "yi").replace("Yj", "Yi"))
+                    # Додаємо варіанти з "iy" замість "ij"
+                    if "ij" in term.lower() or "Ij" in term:
+                        additional_variants.append(term.replace("ij", "iy").replace("Ij", "Iy"))
+                    # Додаємо варіанти з "y" замість "ij" (Andrij -> Andriy)
+                    if term.endswith("ij") or term.endswith("Ij"):
+                        additional_variants.append(term[:-2] + "iy" if term.endswith("ij") else term[:-2] + "Iy")
+                
+                all_search_terms.extend(additional_variants)
+                all_search_terms = list(set(all_search_terms))  # Унікальні
+                
                 print(f"🔍 Пошук користувачів по термінам: {all_search_terms}")
                 
                 # Спочатку спробуємо $search (більш потужний пошук)
@@ -622,6 +658,77 @@ class GraphService:
                 print(f"❌ Помилка search_users_by_first_letter: {e}")
                 return {"success": False, "error": str(e)}
 
+    async def execute_custom_query(
+        self, 
+        endpoint: str, 
+        params: Optional[Dict[str, Any]] = None,
+        use_consistency_level: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Execute a custom Graph API query.
+        
+        This method allows other services to execute custom OData queries
+        without needing to know about token management or session handling.
+        
+        Args:
+            endpoint: Graph API endpoint (e.g., "users" or "users?$filter=...")
+                     Will be prefixed with BASE_URL automatically
+            params: Optional query parameters as dict (will be converted to URL params)
+            use_consistency_level: If True, adds ConsistencyLevel: eventual header
+                                  Required for complex $filter queries with OR across fields
+                                  
+        Returns:
+            Dict with:
+            - success: bool
+            - data: Dict - response data (if success=True)
+            - error: str - error message (if success=False)
+        """
+        async with aiohttp.ClientSession() as session:
+            try:
+                token = await self._get_access_token(session)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Add ConsistencyLevel header for complex queries
+                if use_consistency_level:
+                    headers["ConsistencyLevel"] = "eventual"
+                
+                # Build URL
+                if endpoint.startswith("http"):
+                    # Full URL provided (backward compatibility)
+                    url = endpoint
+                else:
+                    # Endpoint only - prefix with base URL
+                    url = f"{self.base_url}/{endpoint.lstrip('/')}"
+                
+                # Add query parameters if provided
+                if params:
+                    import urllib.parse
+                    query_string = urllib.parse.urlencode(params)
+                    separator = "&" if "?" in url else "?"
+                    url = f"{url}{separator}{query_string}"
+                
+                # Add $count=true for ConsistencyLevel queries
+                if use_consistency_level and "$count" not in url:
+                    separator = "&" if "?" in url else "?"
+                    url = f"{url}{separator}$count=true"
+                
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return {"success": True, "data": data}
+                    else:
+                        try:
+                            error_body = await response.json()
+                            error_msg = error_body.get('error', {}).get('message', f'HTTP {response.status}')
+                        except:
+                            error_msg = f"HTTP {response.status}"
+                        return {"success": False, "error": error_msg}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+    
     async def get_user_by_id(self, user_id: str) -> Dict[str, Any]:
         """Отримує інформацію про користувача по ID"""
         async with aiohttp.ClientSession() as session:
@@ -808,6 +915,189 @@ class GraphService:
                         error_msg = error_body.get('error', {}).get('message', await response.text())
                         return {"success": False, "error": error_msg}
                         
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+    async def search_groups(self, search_term: str, limit: int = 10) -> Dict[str, Any]:
+        """
+        Search for Azure AD groups by name.
+        
+        Args:
+            search_term: Group name to search for
+            limit: Maximum number of results
+            
+        Returns:
+            Dict with success status and groups list
+        """
+        async with aiohttp.ClientSession() as session:
+            try:
+                token = await self._get_access_token(session)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Search groups by displayName
+                url = f"{self.base_url}/groups"
+                params = {
+                    "$filter": f"startswith(displayName,'{search_term}') or startswith(mail,'{search_term}')",
+                    "$top": str(limit),
+                    "$select": "id,displayName,mail,groupTypes,mailEnabled,securityEnabled"
+                }
+                
+                async with session.get(url, headers=headers, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        groups = data.get('value', [])
+                        return {"success": True, "groups": groups}
+                    else:
+                        error_body = await response.json()
+                        error_msg = error_body.get('error', {}).get('message', f'HTTP {response.status}')
+                        return {"success": False, "error": error_msg}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+    async def get_group_members(self, group_id: str) -> Dict[str, Any]:
+        """
+        Get all members of an Azure AD group.
+        
+        Args:
+            group_id: Group ID (object ID)
+            
+        Returns:
+            Dict with success status and members list (users only)
+        """
+        async with aiohttp.ClientSession() as session:
+            try:
+                token = await self._get_access_token(session)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Get group members (users only, not nested groups)
+                url = f"{self.base_url}/groups/{group_id}/members/microsoft.graph.user"
+                params = {
+                    "$select": "id,displayName,mail,userPrincipalName,givenName,surname"
+                }
+                
+                all_members = []
+                while url:
+                    async with session.get(url, headers=headers, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            members = data.get('value', [])
+                            all_members.extend(members)
+                            
+                            # Check for next page
+                            url = data.get('@odata.nextLink')
+                            params = None  # NextLink already has params
+                        else:
+                            error_body = await response.json()
+                            error_msg = error_body.get('error', {}).get('message', f'HTTP {response.status}')
+                            return {"success": False, "error": error_msg}
+                
+                return {"success": True, "members": all_members}
+            except Exception as e:
+                return {"success": False, "error": str(e)}
+
+    async def get_user_timezone(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get user's timezone from their mailbox settings.
+        
+        Args:
+            user_id: User ID (AAD Object ID or userPrincipalName)
+            
+        Returns:
+            Dict with success status and timezone (e.g., "Europe/Kiev")
+        """
+        async with aiohttp.ClientSession() as session:
+            try:
+                token = await self._get_access_token(session)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Get mailbox settings (timezone)
+                url = f"{self.base_url}/users/{user_id}/mailboxSettings"
+                
+                async with session.get(url, headers=headers) as response:
+                    if response.status == 200:
+                        settings = await response.json()
+                        timezone = settings.get('timeZone', 'UTC')
+                        return {"success": True, "timezone": timezone}
+                    else:
+                        # Fallback to UTC if cannot get timezone
+                        return {"success": True, "timezone": "UTC"}
+            except Exception as e:
+                # Fallback to UTC on error
+                return {"success": True, "timezone": "UTC"}
+
+    async def get_calendar_events(
+        self, 
+        user_id: str, 
+        start_time: datetime, 
+        end_time: datetime,
+        include_details: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Get calendar events for a user with details.
+        
+        Args:
+            user_id: User ID (AAD Object ID or userPrincipalName)
+            start_time: Start of time range
+            end_time: End of time range
+            include_details: Whether to include subject and other details (for Free/Busy vs Detailed view)
+            
+        Returns:
+            Dict with success status and events list
+        """
+        async with aiohttp.ClientSession() as session:
+            try:
+                token = await self._get_access_token(session)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json"
+                }
+                
+                # Build query parameters
+                start_iso = start_time.isoformat() + "Z" if not start_time.tzinfo else start_time.isoformat()
+                end_iso = end_time.isoformat() + "Z" if not end_time.tzinfo else end_time.isoformat()
+                
+                # Select fields based on detail level
+                if include_details:
+                    select_fields = "id,subject,start,end,isAllDay,sensitivity,showAs,isCancelled,bodyPreview,location"
+                else:
+                    # Free/Busy only
+                    select_fields = "id,start,end,showAs"
+                
+                url = f"{self.base_url}/users/{user_id}/calendar/calendarView"
+                params = {
+                    "startDateTime": start_iso,
+                    "endDateTime": end_iso,
+                    "$select": select_fields,
+                    "$orderby": "start/dateTime",
+                    "$top": "100"  # Limit to 100 events per day
+                }
+                
+                all_events = []
+                while url:
+                    async with session.get(url, headers=headers, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            events = data.get('value', [])
+                            all_events.extend(events)
+                            
+                            # Check for next page
+                            url = data.get('@odata.nextLink')
+                            params = None  # NextLink already has params
+                        else:
+                            error_body = await response.json()
+                            error_msg = error_body.get('error', {}).get('message', f'HTTP {response.status}')
+                            return {"success": False, "error": error_msg}
+                
+                return {"success": True, "events": all_events}
             except Exception as e:
                 return {"success": False, "error": str(e)}
 

@@ -3,7 +3,7 @@ Action types that can be executed through Adaptive Cards or commands
 """
 from enum import StrEnum
 from typing import List
-from .bot_module import BotModule
+from .bot import BotModule
 
 
 class BotAction(StrEnum):
@@ -37,6 +37,28 @@ class BotAction(StrEnum):
     APPROVE_EQUIPMENT_REQUEST = "approve_equipment_request"
     REJECT_EQUIPMENT_REQUEST = "reject_equipment_request"
     
+    # Scheduling - Find Time
+    SELECT_TIME_SLOT = "select_time_slot"  # Select a time slot from availability
+    SHOW_MORE_SLOTS = "show_more_slots"  # Show more time options
+    BOOK_SLOT = "book_slot"  # Book selected time slot
+    
+    # Scheduling - Booking
+    CONFIRM_BOOKING = "confirm_booking"  # Confirm meeting booking
+    ADD_EXTERNAL_GUEST = "add_external_guest"  # Add external guest by email
+    ADD_GROUP = "add_group"  # Add Azure AD group
+    
+    # Scheduling - CRUD
+    RESCHEDULE_MEETING = "reschedule_meeting"  # Reschedule existing meeting
+    CANCEL_MEETING = "cancel_meeting_action"  # Cancel meeting (action from card)
+    UPDATE_NOTIFICATION_PREFERENCE = "update_notification_preference"  # Who to notify on update
+    
+    # Scheduling - Workshop
+    IGNORE_AVAILABILITY_TOGGLE = "ignore_availability_toggle"  # Toggle ignore availability for workshop
+    CONFIRM_WORKSHOP = "confirm_workshop"  # Confirm workshop creation
+    
+    # Scheduling - Daily Briefing
+    VIEW_CALENDAR_DETAILS = "view_calendar_details"  # View detailed calendar info
+    
     def get_module(self) -> BotModule:
         """Returns the module this action belongs to"""
         module_map = {
@@ -59,7 +81,21 @@ class BotAction(StrEnum):
             self.APPROVE_ACCESS_REQUEST: BotModule.SERVICE_DESK,
             self.REJECT_ACCESS_REQUEST: BotModule.SERVICE_DESK,
             self.APPROVE_EQUIPMENT_REQUEST: BotModule.SERVICE_DESK,
-            self.REJECT_EQUIPMENT_REQUEST: BotModule.SERVICE_DESK
+            self.REJECT_EQUIPMENT_REQUEST: BotModule.SERVICE_DESK,
+            
+            # Scheduling
+            self.SELECT_TIME_SLOT: BotModule.SCHEDULING,
+            self.SHOW_MORE_SLOTS: BotModule.SCHEDULING,
+            self.BOOK_SLOT: BotModule.SCHEDULING,
+            self.CONFIRM_BOOKING: BotModule.SCHEDULING,
+            self.ADD_EXTERNAL_GUEST: BotModule.SCHEDULING,
+            self.ADD_GROUP: BotModule.SCHEDULING,
+            self.RESCHEDULE_MEETING: BotModule.SCHEDULING,
+            self.CANCEL_MEETING: BotModule.SCHEDULING,
+            self.UPDATE_NOTIFICATION_PREFERENCE: BotModule.SCHEDULING,
+            self.IGNORE_AVAILABILITY_TOGGLE: BotModule.SCHEDULING,
+            self.CONFIRM_WORKSHOP: BotModule.SCHEDULING,
+            self.VIEW_CALENDAR_DETAILS: BotModule.SCHEDULING
         }
         return module_map.get(self, BotModule.PEOPLE_OPS)
     

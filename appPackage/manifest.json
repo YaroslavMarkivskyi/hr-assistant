@@ -1,10 +1,11 @@
 {
-    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
-    "manifestVersion": "1.24",
+    "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+    "manifestVersion": "1.16",
     "version": "1.0.0",
-    "id": "${{TEAMS_APP_ID}}",
+    "id": "bb4df61d-0802-49f8-a8aa-3dc5e72cf696",
+    "packageName": "com.hrbot.structura",
     "developer": {
-        "name": "My App, Inc.",
+        "name": "HR Onboarding Assistant",
         "websiteUrl": "https://www.example.com",
         "privacyUrl": "https://www.example.com/privacy",
         "termsOfUseUrl": "https://www.example.com/termofuse"
@@ -14,21 +15,21 @@
         "outline": "outline.png"
     },
     "name": {
-        "short": "hr-onboarding-assistant${{APP_NAME_SUFFIX}}",
-        "full": "full name for hr-onboarding-assistant"
+        "short": "HR Onboarding Assistant",
+        "full": "HR Onboarding Assistant Bot"
     },
     "description": {
-        "short": "short description for hr-onboarding-assistant",
-        "full": "full description for hr-onboarding-assistant"
+        "short": "HR assistant bot for onboarding",
+        "full": "Microsoft Teams bot for HR operations including employee onboarding."
     },
-    "accentColor": "#FFFFFF",
+    "accentColor": "#0078D4",
     "bots": [
         {
-            "botId": "${{BOT_ID}}",
+            "botId": "bb4df61d-0802-49f8-a8aa-3dc5e72cf696",
             "scopes": [
+                "personal",
                 "team",
-                "groupChat",
-                "personal"
+                "groupChat"
             ],
             "supportsFiles": false,
             "isNotificationOnly": false,
@@ -39,24 +40,20 @@
                     ],
                     "commands": [
                         {
-                            "title": "How can you help me?",
-                            "description": "How can you help me?"
-                        },
-                        {
-                            "title": "How to develop agent for Teams?",
-                            "description": "How can I develop agents with Microsoft 365 Agents Toolkit?"
+                            "title": "Start",
+                            "description": "Start the bot"
                         }
                     ]
                 }
             ]
         }
     ],
-    "composeExtensions": [],
-    "configurableTabs": [],
-    "staticTabs": [],
     "permissions": [
         "identity",
         "messageTeamMembers"
     ],
-    "validDomains": []
+    "validDomains": [
+        "*.ngrok-free.app",
+        "*.ngrok.io"
+    ]
 }

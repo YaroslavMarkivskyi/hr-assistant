@@ -1,62 +1,292 @@
-import os
-from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
+"""
+Application Configuration Module
 
-# --- 1. Визначаємо шляхи до папки env ---
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-secret_env_path = os.path.join(base_dir, "env", ".env.local.user")
-public_env_path = os.path.join(base_dir, "env", ".env.local")
+Organized into logical configuration classes for better maintainability.
+Refactored for Single Tenant Azure Bot support.
+"""
+from typing import Optional
+from pathlib import Path
+from pydantic import Field, AliasChoices
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# --- 2. Явно завантажуємо змінні в оточення ---
-# Спочатку секрети (паролі), потім публічні ID
-load_dotenv(secret_env_path)
-load_dotenv(public_env_path)
-load_dotenv() # На випадок, якщо є звичайний .env
+# --- Paths ---
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+ENV_DIR = BASE_DIR / "env"
 
-class Config(BaseSettings):
+
+# --- Configuration Classes ---
+
+class AzureBotConfig(BaseSettings):
+    """Azure Bot Framework configuration"""
+    
+    APP_ID: str = Field(
+        validation_alias=AliasChoices("BOT_ID", "MicrosoftAppId", "APP_ID")
+    )
+    APP_PASSWORD: str = Field(
+        validation_alias=AliasChoices(
+            "BOT_PASSWORD", 
+            "SECRET_BOT_PASSWORD", 
+            "MicrosoftAppPassword", 
+            "APP_PASSWORD"
+        )
+    )
+    # ЗМІНЕНО: Default is now SingleTenant. Added MicrosoftAppType alias.
+    APP_TYPE: str = Field(
+        default="SingleTenant",
+        validation_alias=AliasChoices("BOT_TYPE", "APP_TYPE", "MicrosoftAppType")
+    )
+    # ЗМІНЕНО: Added MicrosoftAppTenantId and TENANT_ID aliases.
+    TENANT_ID: str = Field(
+        default="",
+        validation_alias=AliasChoices("TEAMS_APP_TENANT_ID", "MicrosoftAppTenantId", "TENANT_ID")
+    )
+    
+    model_config = SettingsConfigDict(
+        env_file=[
+            ENV_DIR / ".env",
+            ENV_DIR / ".env.local",
+            ENV_DIR / ".env.local.user",
+        ],
+        env_ignore_empty=True,
+        extra="ignore",
+        case_sensitive=True
+    )
+
+
+class OpenAIConfig(BaseSettings):
+    """OpenAI service configuration"""
+    
+    OPENAI_API_KEY: str
+    OPENAI_MODEL_NAME: str = Field(default="gpt-3.5-turbo")
+    
+    model_config = SettingsConfigDict(
+        env_file=[
+            ENV_DIR / ".env",
+            ENV_DIR / ".env.local",
+            ENV_DIR / ".env.local.user",
+        ],
+        env_ignore_empty=True,
+        extra="ignore",
+        case_sensitive=True
+    )
+
+
+class EmailConfig(BaseSettings):
+    """Email service configuration (Azure Communication Services)"""
+    
+    COMMUNICATION_CONNECTION_STRING: Optional[str] = None
+    MAIL_FROM_ADDRESS: Optional[str] = None
+    
+    model_config = SettingsConfigDict(
+        env_file=[
+            ENV_DIR / ".env",
+            ENV_DIR / ".env.local",
+            ENV_DIR / ".env.local.user",
+        ],
+        env_ignore_empty=True,
+        extra="ignore",
+        case_sensitive=True
+    )
+
+
+class DatabaseConfig(BaseSettings):
+    """Database configuration"""
+    
+    # SQLite (default for local dev)
+    DB_PATH: str = Field(default="time_off.db")
+    
+    # PostgreSQL (for production/Docker)
+    DB_HOST: Optional[str] = None
+    DB_PORT: int = Field(default=5432)
+    DB_NAME: Optional[str] = None
+    DB_USER: Optional[str] = None
+    DB_PASSWORD: Optional[str] = None
+    
+    @property
+    def database_url(self) -> str:
+        """Generate SQLAlchemy connection string"""
+        # Use PostgreSQL if credentials are provided
+        if self.DB_HOST and self.DB_NAME and self.DB_USER and self.DB_PASSWORD:
+            return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        # Otherwise use SQLite
+        return f"sqlite+aiosqlite:///{self.DB_PATH}"
+    
+    model_config = SettingsConfigDict(
+        env_file=[
+            ENV_DIR / ".env",
+            ENV_DIR / ".env.local",
+            ENV_DIR / ".env.local.user",
+        ],
+        env_ignore_empty=True,
+        extra="ignore",
+        case_sensitive=True
+    )
+
+
+class AppConfig(BaseSettings):
+    """General application configuration"""
+    
+    PROJECT_NAME: str = Field(default="HR Bot")
+    PORT: int = Field(default=3978)
+    DEFAULT_LICENSE_SKU_ID: str = Field(default="")
+    
+    # AI Retry Configuration
+    AI_MAX_RETRIES: int = Field(default=2, description="Maximum number of retries for AI API calls")
+    AI_RETRY_DELAY_SECONDS: float = Field(default=1.0, description="Delay between AI retry attempts in seconds")
+    
+    model_config = SettingsConfigDict(
+        env_file=[
+            ENV_DIR / ".env",
+            ENV_DIR / ".env.local",
+            ENV_DIR / ".env.local.user",
+        ],
+        env_ignore_empty=True,
+        extra="ignore",
+        case_sensitive=True
+    )
+
+
+class DevConfig(BaseSettings):
+    """Development and testing configuration"""
+    
+    TEST_USER_ID: Optional[str] = None
+    DEFAULT_APPROVER: Optional[str] = None
+    
+    model_config = SettingsConfigDict(
+        env_file=[
+            ENV_DIR / ".env",
+            ENV_DIR / ".env.local",
+            ENV_DIR / ".env.local.user",
+        ],
+        env_ignore_empty=True,
+        extra="ignore",
+        case_sensitive=True
+    )
+
+
+# --- Main Configuration Class ---
+
+class Config:
     """
-    Configuration class to load environment variables.
+    Main application configuration.
+    
+    Combines all configuration sections for easy access.
+    Maintains backward compatibility with flat attribute access.
     """
-    PORT: int = 3978
     
-    # Pydantic візьме ці значення з os.environ, який ми наповнили вище
-    APP_ID: str = os.environ.get("BOT_ID", os.environ.get("CLIENT_ID", ""))
+    def __init__(self):
+        """Initialize Config by loading nested configs from environment."""
+        # Load each nested config from environment
+        self.azure_bot = AzureBotConfig()
+        self.openai = OpenAIConfig()
+        self.email = EmailConfig()
+        self.database = DatabaseConfig()
+        self.app = AppConfig()
+        self.dev = DevConfig()
     
-    # Шукаємо пароль у всіх можливих варіантах, які створює Teams Toolkit
-    APP_PASSWORD: str = os.environ.get("BOT_PASSWORD", os.environ.get("SECRET_BOT_PASSWORD", ""))
+    # --- Backward Compatibility: Flat Access ---
+    # These properties allow existing code to access config.APP_ID, config.DB_PATH, etc.
     
-    APP_TYPE: str = os.environ.get("BOT_TYPE", "UserAssignedMsi")
-    TENANT_ID: str = os.environ.get("TEAMS_APP_TENANT_ID", "")
+    @property
+    def APP_ID(self) -> str:
+        """Azure Bot App ID (backward compatibility)"""
+        return self.azure_bot.APP_ID
     
-    OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
-    OPENAI_MODEL_NAME: str = os.environ.get("OPENAI_MODEL_NAME", "gpt-3.5-turbo")
+    @property
+    def APP_PASSWORD(self) -> str:
+        """Azure Bot App Password (backward compatibility)"""
+        return self.azure_bot.APP_PASSWORD
     
-    COMMUNICATION_CONNECTION_STRING: str = os.environ.get("COMMUNICATION_CONNECTION_STRING", "")
-    MAIL_FROM_ADDRESS: str = os.environ.get("MAIL_FROM_ADDRESS", "")
+    @property
+    def APP_TYPE(self) -> str:
+        """Azure Bot App Type (backward compatibility)"""
+        return self.azure_bot.APP_TYPE
     
-    # Ліцензія для призначення новим користувачам (SKU ID)
-    # Приклад: "f30db892-07e9-47e9-837c-80727f46fd3d" для Microsoft 365 Business Basic
-    DEFAULT_LICENSE_SKU_ID: str = os.environ.get("DEFAULT_LICENSE_SKU_ID", "")
+    @property
+    def TENANT_ID(self) -> str:
+        """Azure Tenant ID (backward compatibility)"""
+        return self.azure_bot.TENANT_ID
     
-    # Тестовий ID користувача для локального тестування (якщо requester_id не знайдено з activity)
-    # Встановіть це значення в .env для локального тестування
-    TEST_USER_ID: str = os.environ.get("TEST_USER_ID", "")
+    @property
+    def OPENAI_API_KEY(self) -> str:
+        """OpenAI API Key (backward compatibility)"""
+        return self.openai.OPENAI_API_KEY
+    
+    @property
+    def OPENAI_MODEL_NAME(self) -> str:
+        """OpenAI Model Name (backward compatibility)"""
+        return self.openai.OPENAI_MODEL_NAME
+    
+    @property
+    def COMMUNICATION_CONNECTION_STRING(self) -> Optional[str]:
+        """Email Communication Connection String (backward compatibility)"""
+        return self.email.COMMUNICATION_CONNECTION_STRING
+    
+    @property
+    def MAIL_FROM_ADDRESS(self) -> Optional[str]:
+        """Email From Address (backward compatibility)"""
+        return self.email.MAIL_FROM_ADDRESS
+    
+    @property
+    def DB_PATH(self) -> str:
+        """Database Path (backward compatibility)"""
+        return self.database.DB_PATH
+    
+    @property
+    def database_url(self) -> str:
+        """Database URL (backward compatibility)"""
+        return self.database.database_url
+    
+    @property
+    def PROJECT_NAME(self) -> str:
+        """Project Name (backward compatibility)"""
+        return self.app.PROJECT_NAME
+    
+    @property
+    def PORT(self) -> int:
+        """Application Port (backward compatibility)"""
+        return self.app.PORT
+    
+    @property
+    def DEFAULT_LICENSE_SKU_ID(self) -> str:
+        """Default License SKU ID (backward compatibility)"""
+        return self.app.DEFAULT_LICENSE_SKU_ID
+    
+    @property
+    def TEST_USER_ID(self) -> Optional[str]:
+        """Test User ID (backward compatibility)"""
+        return self.dev.TEST_USER_ID
+    
+    @property
+    def DEFAULT_APPROVER(self) -> Optional[str]:
+        """Default Approver ID (backward compatibility)"""
+        return self.dev.DEFAULT_APPROVER
+    
+    @property
+    def AI_MAX_RETRIES(self) -> int:
+        """AI Max Retries (backward compatibility)"""
+        return self.app.AI_MAX_RETRIES
+    
+    @property
+    def AI_RETRY_DELAY_SECONDS(self) -> float:
+        """AI Retry Delay Seconds (backward compatibility)"""
+        return self.app.AI_RETRY_DELAY_SECONDS
 
-    class Config:
-        # Ми вже завантажили файли вручну, тому тут можна залишити стандартний .env
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        extra = "ignore"
 
-# --- 3. Діагностика (щоб ти бачив у терміналі, чи підтягнувся пароль) ---
-try:
-    cfg = Config()
-    masked_pwd = f"{cfg.APP_PASSWORD[:3]}***" if cfg.APP_PASSWORD else "❌ EMPTY"
-    license_status = cfg.DEFAULT_LICENSE_SKU_ID if cfg.DEFAULT_LICENSE_SKU_ID else "❌ NOT SET"
-    print(f"\n🔧 CONFIG DIAGNOSTIC:")
-    print(f"   BOT_ID: {cfg.APP_ID}")
-    print(f"   BOT_PASSWORD: {masked_pwd}")
-    print(f"   TENANT_ID: {cfg.TENANT_ID}")
-    print(f"   DEFAULT_LICENSE_SKU_ID: {license_status}\n")
-except Exception as e:
-    print(f"❌ Config Error: {e}")
+# --- Singleton Instance ---
+settings = Config()
+
+
+# --- Logging Function ---
+def log_settings():
+    """Log configuration settings (called from main.py, not on import)"""
+    masked_pwd = f"{settings.APP_PASSWORD[:3]}***" if settings.APP_PASSWORD else "❌ EMPTY"
+    
+    print("\n🔧 CONFIGURATION LOADED:")
+    print(f"   📂 Env Dir: {ENV_DIR}")
+    print(f"   🤖 Bot ID: {settings.APP_ID}")
+    print(f"   🔑 Password: {masked_pwd}")
+    print(f"   🏢 Tenant ID: {settings.TENANT_ID or '❌ Not set'}")
+    print(f"   ⚙️  App Type: {settings.APP_TYPE}")
+    print(f"   🗄️  DB URL: {settings.database_url}")
+    print("-" * 30)

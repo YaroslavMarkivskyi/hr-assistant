@@ -1,8 +1,11 @@
 """
 Bot capabilities - what the bot can do
+
+NOTE: BotCapability is used only for displaying bot capabilities in chat.
+Consider removing it and using BotIntent instead, as it duplicates information.
 """
 from enum import StrEnum
-from .bot_module import BotModule
+from .bot.modules import BotModule
 
 
 class BotCapability(StrEnum):

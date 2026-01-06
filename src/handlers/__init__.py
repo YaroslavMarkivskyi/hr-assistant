@@ -1,14 +1,10 @@
 """
-Handlers package for bot message processing
+Handlers package - module controllers
+
+This module exports controllers. Registration happens explicitly in container.py
+to avoid side effects from imports.
+
+Note: Controllers are not imported here to avoid circular imports.
+They are imported directly in container.py where they are registered.
 """
-from .actions import handle_action
-from .intents import handle_intent
-from .common import handle_unknown_intent, handle_chat_intent
-
-__all__ = [
-    'handle_action',
-    'handle_intent',
-    'handle_unknown_intent',
-    'handle_chat_intent',
-]                                                     
-
+__all__ = []

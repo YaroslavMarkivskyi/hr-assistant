@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist
+build
+.eggs
+
+# Virtual environments
+.venv
+venv
+ENV
+env
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Environment files (will be mounted as volume)
+env/.env.local.user
+
+# Logs
+*.log
+logs
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Infrastructure
+infra/
+appPackage/
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Development tools
+devTools/
+m365agents*.yml
+
+
+
+

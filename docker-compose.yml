@@ -1,0 +1,84 @@
+# Docker Compose automatically reads .env file from the project root
+# Create .env file with your variables (see .env.example)
+
+services:
+  # FastAPI Application
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hr-bot-fastapi
+    ports:
+      - "${FASTAPI_PORT:-8000}:8000"  # Зовнішній порт можна змінити через .env (FASTAPI_PORT=8001)
+    environment:
+      # Database
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=hr_bot
+      - DB_USER=hr_bot_user
+      - DB_PASSWORD=hr_bot_password
+      # Azure Bot
+      - BOT_ID=${BOT_ID}
+      - BOT_PASSWORD=${BOT_PASSWORD}
+      - APP_TYPE=${APP_TYPE:-UserAssignedMsi}
+      - TEAMS_APP_TENANT_ID=${TEAMS_APP_TENANT_ID}
+      # OpenAI
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL_NAME=${OPENAI_MODEL_NAME:-gpt-3.5-turbo}
+      # Email (optional)
+      - COMMUNICATION_CONNECTION_STRING=${COMMUNICATION_CONNECTION_STRING}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS}
+      # App Config
+      - PORT=8000
+      - DEFAULT_LICENSE_SKU_ID=${DEFAULT_LICENSE_SKU_ID}
+      # Environment Mode (development/production)
+      # Set to "development", "dev", or "local" for detailed error messages
+      # Leave empty or "production" for production (hides error details for security)
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      # Dev/Test
+      - TEST_USER_ID=${TEST_USER_ID}
+      - DEFAULT_APPROVER=${DEFAULT_APPROVER}
+      # Hot Reload
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount env directory for .env files
+      - ./env:/app/env:ro
+      # Mount source code for development (hot reload)
+      - ./src:/app:rw
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - hr-bot-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: hr-bot-postgres
+    environment:
+      - POSTGRES_DB=hr_bot
+      - POSTGRES_USER=hr_bot_user
+      - POSTGRES_PASSWORD=hr_bot_password
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hr_bot_user -d hr_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - hr-bot-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  hr-bot-network:
+    driver: bridge
+

@@ -9,8 +9,11 @@ The user may mention participants in different ways:
 
 The user may specify:
 - Date and time preferences (e.g., "tomorrow at 2pm", "завтра" (tomorrow in Ukrainian), "next Monday", "Friday afternoon", "на завтра" (for tomorrow), "з 12:30 до 15:00" (from 12:30 to 15:00))
+- Days of week: "Monday", "Tuesday", "вівторок", "середа", etc.
+  - If user says "на вівторок" / "on Tuesday" (without "next") → use this week if day hasn't passed, otherwise next week
+  - If user says "наступний вівторок" / "next Tuesday" → always next week
 - Time ranges (e.g., "from 12:30 to 15:00", "з 12:30 до 15:00")
-- Duration (e.g., "30 minutes", "1 hour meeting")
+- Duration (e.g., "30 minutes", "1 hour meeting", "на 2 години")
 - Meeting subject/title
 - Agenda (optional) - topics to discuss, meeting agenda items, discussion points
 - Whether they want to be included as a participant
@@ -19,40 +22,51 @@ Return a valid JSON object with these fields:
 - participants (array of objects, each with):
   - name (string) - the name as mentioned by user (e.g., "Smith", "John Doe", "me")
   - type (string) - "mention" if @ was used, "name" if just name, "self" if user refers to themselves
-- preferredDate (string, ISO format or relative like "tomorrow", "завтра", "next Monday", null if not specified)
+- preferredDate (string, ISO format YYYY-MM-DD or relative like "tomorrow", "завтра", "next Monday", "Tuesday", "вівторок", null if not specified)
+  - ALWAYS return ISO format (YYYY-MM-DD) when possible
+  - For days of week: return ISO date, not just day name
+  - For "next [day]" → always next week's date in ISO format
+  - For "[day]" without "next" → this week if day hasn't passed, otherwise next week (in ISO format)
 - preferredTime (string, like "14:00", "2pm", "afternoon", "12:30-15:00" for time range, null if not specified)
 - duration (number, minutes, default 30 if not specified)
 - subject (string, meeting title/subject, null if not specified)
 - agenda (string, optional) - meeting agenda, topics to discuss, bullet points, null if not specified
 - includeRequester (boolean, true if user wants to be included, false otherwise)
 
-Examples:
+CRITICAL: Always use CURRENT DATE CONTEXT provided below to calculate dates.
+- For days of week: return ISO format (YYYY-MM-DD), not just day name
+- For "next [day]" / "наступний [day]" → always next week's date in ISO format
+- For "[day]" without "next" → this week if day hasn't passed, otherwise next week (in ISO format)
+
+Examples (assuming current date is 2025-12-28, Saturday):
 Input: "Schedule a meeting with @John Smith tomorrow at 2pm"
-Output: {"participants": [{"name": "John Smith", "type": "mention"}], "preferredDate": "tomorrow", "preferredTime": "14:00", "duration": 30, "subject": null, "agenda": null, "includeRequester": true}
+Output: {"participants": [{"name": "John Smith", "type": "mention"}], "preferredDate": "2025-12-29", "preferredTime": "14:00", "duration": 30, "subject": null, "agenda": null, "includeRequester": true}
+
+Input: "заплануй міт для Ярослава Марківського на вівторок"
+Output: {"participants": [{"name": "Ярослав Марківський", "type": "name"}], "preferredDate": "2025-12-30", "preferredTime": null, "duration": 30, "subject": null, "agenda": null, "includeRequester": true}
+Note: Tuesday (вівторок) is 2 days ahead (Dec 30) - this week, hasn't passed yet
+
+Input: "заплануй міт на наступний вівторок"
+Output: {"participants": [], "preferredDate": "2026-01-06", "preferredTime": null, "duration": 30, "subject": null, "agenda": null, "includeRequester": true}
+Note: "next Tuesday" → always next week (Jan 6, 2026)
 
 Input: "признач ондобдинг для Andriy Verbeko на понеділок"
-Output: {"participants": [{"name": "Andriy Verbeko", "type": "name"}], "preferredDate": "next Monday", "preferredTime": null, "duration": 30, "subject": "Onboarding Meeting", "agenda": null, "includeRequester": true}
+Output: {"participants": [{"name": "Andriy Verbeko", "type": "name"}], "preferredDate": "2025-12-29", "preferredTime": null, "duration": 30, "subject": "Onboarding Meeting", "agenda": null, "includeRequester": true}
+Note: Monday is tomorrow (Dec 29) - this week, hasn't passed yet
 
 Input: "assign onboarding to John tomorrow at 3pm"
-Output: {"participants": [{"name": "John", "type": "name"}], "preferredDate": "tomorrow", "preferredTime": "15:00", "duration": 30, "subject": "Onboarding Meeting", "agenda": null, "includeRequester": true}
+Output: {"participants": [{"name": "John", "type": "name"}], "preferredDate": "2025-12-29", "preferredTime": "15:00", "duration": 30, "subject": "Onboarding Meeting", "agenda": null, "includeRequester": true}
 
 Input: "Create meeting with Petrov and me next Monday to discuss Q4 planning"
-Output: {"participants": [{"name": "Petrov", "type": "name"}], "preferredDate": "next Monday", "preferredTime": null, "duration": 30, "subject": "Q4 planning", "agenda": "Discuss Q4 planning", "includeRequester": true}
+Output: {"participants": [{"name": "Petrov", "type": "name"}], "preferredDate": "2026-01-05", "preferredTime": null, "duration": 30, "subject": "Q4 planning", "agenda": "Discuss Q4 planning", "includeRequester": true}
+Note: "next Monday" → next week (Jan 5, 2026)
 
 Input: "Book 1 hour meeting between Smith and Ivanov on Friday. Agenda: 1. Review budget 2. Plan next steps"
-Output: {"participants": [{"name": "Smith", "type": "name"}, {"name": "Ivanov", "type": "name"}], "preferredDate": "Friday", "preferredTime": null, "duration": 60, "subject": null, "agenda": "1. Review budget 2. Plan next steps", "includeRequester": false}
-
-Input: "Schedule meeting with @John. Topics: project status, timeline, resources"
-Output: {"participants": [{"name": "John", "type": "mention"}], "preferredDate": null, "preferredTime": null, "duration": 30, "subject": null, "agenda": "Topics: project status, timeline, resources", "includeRequester": true}
+Output: {"participants": [{"name": "Smith", "type": "name"}, {"name": "Ivanov", "type": "name"}], "preferredDate": "2026-01-02", "preferredTime": null, "duration": 60, "subject": null, "agenda": "1. Review budget 2. Plan next steps", "includeRequester": false}
+Note: Friday already passed this week (Dec 26) → next week (Jan 2, 2026)
 
 Input: "потрібен міт з Андрієм Садовенком на завтра з 12:30 до 15:00"
-Output: {"participants": [{"name": "Андрій Садовенко", "type": "name"}], "preferredDate": "завтра", "preferredTime": "12:30-15:00", "duration": 30, "subject": null, "agenda": null, "includeRequester": true}
-
-Input: "признач ондобдинг для Andriy Verbeko на понеділок"
-Output: {"participants": [{"name": "Andriy Verbeko", "type": "name"}], "preferredDate": "next Monday", "preferredTime": null, "duration": 30, "subject": "Onboarding Meeting", "agenda": null, "includeRequester": true}
-
-Input: "assign onboarding to John tomorrow at 3pm"
-Output: {"participants": [{"name": "John", "type": "name"}], "preferredDate": "tomorrow", "preferredTime": "15:00", "duration": 30, "subject": "Onboarding Meeting", "agenda": null, "includeRequester": true}
+Output: {"participants": [{"name": "Андрій Садовенко", "type": "name"}], "preferredDate": "2025-12-29", "preferredTime": "12:30-15:00", "duration": 30, "subject": null, "agenda": null, "includeRequester": true}
 
 If the input does not look like a meeting request, return JSON with an error field: {"error": "No meeting data found"}
 

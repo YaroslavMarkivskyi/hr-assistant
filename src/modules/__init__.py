@@ -1,7 +1,7 @@
 """
 Модулі бота - основні функціональні блоки
 """
-from enums import BotModule
+from enums.bot import BotModule
 
 __all__ = ['BotModule']
 

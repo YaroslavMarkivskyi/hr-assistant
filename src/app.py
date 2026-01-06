@@ -10,7 +10,7 @@ from microsoft.teams.apps import App, ActivityContext
 
 from config import Config
 from container import ServiceContainer
-from router import route_message
+from bot.router import MessageRouter
 
 # Initialize configuration
 config = Config()
@@ -44,7 +44,8 @@ async def handle_message(ctx: ActivityContext, state: Any = None):
         ctx: Activity context from Teams
         state: Optional state (not used currently)
     """
-    await route_message(ctx, service_container)
+    router = MessageRouter(ctx, service_container)
+    await router.route()
 
 if __name__ == "__main__":
     asyncio.run(app.start())

@@ -1,12 +1,12 @@
 """
 Translation resources for bot localization
 """
-from typing import Dict
+from typing import Dict, Union
 from enums.languages import Language
-from enums.bot_module import BotModule
+from enums.bot import BotModule, BotIntent, AnyIntent
 from enums.bot_capability import BotCapability
-from enums.bot_intent import BotIntent
-from enums.bot_action import BotAction
+from enums.bot import BotAction
+from enums.translation_key import TranslationKey
 
 
 # Translation dictionaries
@@ -61,14 +61,39 @@ TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "action.reject_equipment_request": "Reject Equipment Request",
         
         # Messages
-        "message.unknown_intent": "🤔 Sorry, I didn't understand your request.\n\nI can help with:\n• Creating accounts for new employees\n• Scheduling meetings\n• Vacation requests (coming soon)\n• Answering questions (coming soon)\n\nPlease rephrase your request or send me a resume to create an account.",
+        "message.unknown_intent": "🤔 Sorry, I didn't understand your request.\n\nI can help with:\n\n📦 **Scheduling:**\n• Find available time slots\n• Book meetings with Teams links\n• View employee schedules\n• Create workshops and lectures\n• Daily calendar briefing\n\n📋 **People Ops:**\n• Creating accounts for new employees (coming soon)\n• Welcome checklists (coming soon)\n• Offboarding (coming soon)\n\n⏰ **Time Off:**\n• Vacation requests (coming soon)\n• Check vacation balance (coming soon)\n\n💬 **Knowledge Base:**\n• Answering questions (coming soon)\n\nPlease rephrase your request or try one of the options above.",
         "message.chat_greeting": "Hello! I'm HR Onboarding Assistant. I can help with:\n",
+        "message.chat_scheduling_capabilities": "\n📦 **Scheduling:**\n  • Find available time slots\n  • Book meetings with Teams links\n  • View employee schedules\n  • Create workshops and lectures\n  • Daily calendar briefing",
         "message.chat_footer": "\n\nSend me a resume or candidate data, and I'll help create an account!",
         "message.greeting": "Hello, {name}!",
         "message.user_created": "✅ User **{email}** has been successfully created!",
         "message.meeting_scheduled": "📅 Meeting '{subject}' scheduled for {date} at {time}",
         "message.module_in_development": "⚠️ {module} module is under development",
         "message.feature_in_development": "⚠️ This feature is under development",
+        "message.processing_error": "Sorry, an error occurred while processing your message. Please try again.",
+        "message.user_identification_error": "❌ Error: Unable to identify user. Please contact support.",
+        
+        # Time Off
+        "time_off.balance_title": "Leave Balance - {name}",
+        "time_off.vacation_balance": "Vacation Days:",
+        "time_off.sick_balance": "Sick Leave Days:",
+        "time_off.vacation": "Vacation",
+        "time_off.sick_leave": "Sick Leave",
+        "time_off.employee_not_found": "❌ Employee not found. Please contact HR.",
+        "time_off.invalid_start_date": "❌ Invalid start date. Please use format: YYYY-MM-DD, 'tomorrow', or 'next Monday'.",
+        "time_off.invalid_end_date": "❌ Invalid end date. Please use format: YYYY-MM-DD or specify duration.",
+        "time_off.past_date_error": "❌ Start date cannot be in the past for vacation requests.",
+        "time_off.insufficient_balance": "❌ Insufficient balance. You requested {requested} days of {type}, but only {available} days are available.",
+        "time_off.date_overlap_error": "❌ These dates overlap with an existing approved leave request.",
+        "time_off.request_created": "✅ Leave request created: {days} days from {start_date} to {end_date}. Waiting for manager approval.",
+        "time_off.request_not_found": "❌ Leave request not found.",
+        "time_off.request_already_processed": "⚠️ This request has already been processed.",
+        "time_off.request_approved": "✅ Leave request approved! Calendar event created.",
+        "time_off.request_rejected": "❌ Leave request rejected. {reason}",
+        "time_off.parse_error": "❌ Could not parse leave request: {error}",
+        "time_off.unknown_intent": "❌ Unknown time off request. Please specify: vacation, sick leave, or check balance.",
+        "time_off.no_pending_requests": "✅ No pending leave requests to approve.",
+        "time_off.pending_requests_title": "Pending Leave Requests",
     },
     Language.UKRAINIAN: {
         # BotModule names
@@ -120,25 +145,55 @@ TRANSLATIONS: Dict[Language, Dict[str, str]] = {
         "action.reject_equipment_request": "Відхилити запит техніки",
         
         # Messages
-        "message.unknown_intent": "🤔 Вибачте, я не зрозумів ваш запит.\n\nЯ можу допомогти з:\n• Створенням акаунтів для нових співробітників\n• Призначенням зустрічей\n• Запитами відпустки (скоро)\n• Відповідями на питання (скоро)\n\nСпробуйте переформулювати запит або надішліть мені резюме для створення акаунта.",
+        "message.unknown_intent": "🤔 Вибачте, я не зрозумів ваш запит.\n\nЯ можу допомогти з:\n\n📦 **Scheduling:**\n• Знайти доступні часові слоти\n• Забронювати зустрічі з посиланнями Teams\n• Переглянути розклади співробітників\n• Створити воркшопи та лекції\n• Щоденний брифінг календаря\n\n📋 **People Ops:**\n• Створення акаунтів для нових співробітників (скоро)\n• Welcome checklists (скоро)\n• Offboarding (скоро)\n\n⏰ **Time Off:**\n• Запити відпустки (скоро)\n• Перевірка балансу відпустки (скоро)\n\n💬 **Knowledge Base:**\n• Відповіді на питання (скоро)\n\nСпробуйте переформулювати запит або оберіть один з варіантів вище.",
         "message.chat_greeting": "Привіт! Я HR Onboarding Assistant. Я можу допомогти з:\n",
+        "message.chat_scheduling_capabilities": "\n📦 **Scheduling:**\n  • Знайти доступні часові слоти\n  • Забронювати зустрічі з посиланнями Teams\n  • Переглянути розклади співробітників\n  • Створити воркшопи та лекції\n  • Щоденний брифінг календаря",
         "message.chat_footer": "\n\nНадішліть мені резюме або дані про кандидата, і я допоможу створити акаунт!",
         "message.greeting": "Привіт, {name}!",
         "message.user_created": "✅ Користувача **{email}** успішно створено!",
         "message.meeting_scheduled": "📅 Зустріч '{subject}' заплановано на {date} о {time}",
         "message.module_in_development": "⚠️ Модуль {module} в розробці",
         "message.feature_in_development": "⚠️ Ця функція в розробці",
+        "message.processing_error": "Вибачте, сталася помилка при обробці вашого повідомлення. Будь ласка, спробуйте ще раз.",
+        "message.user_identification_error": "❌ Помилка: не вдалося ідентифікувати користувача. Зверніться до підтримки.",
+        
+        # Time Off
+        "time_off.balance_title": "Баланс відпусток - {name}",
+        "time_off.vacation_balance": "Днів відпустки:",
+        "time_off.sick_balance": "Днів лікарняних:",
+        "time_off.vacation": "Відпустка",
+        "time_off.sick_leave": "Лікарняний",
+        "time_off.employee_not_found": "❌ Співробітника не знайдено. Зверніться до HR.",
+        "time_off.invalid_start_date": "❌ Невірна дата початку. Використовуйте формат: YYYY-MM-DD, 'завтра' або 'наступний понеділок'.",
+        "time_off.invalid_end_date": "❌ Невірна дата завершення. Використовуйте формат: YYYY-MM-DD або вкажіть тривалість.",
+        "time_off.past_date_error": "❌ Дата початку не може бути в минулому для заявок на відпустку.",
+        "time_off.insufficient_balance": "❌ Недостатньо днів. Ви запитуєте {requested} днів {type}, але доступно лише {available}.",
+        "time_off.date_overlap_error": "❌ Ці дати перетинаються з існуючою затвердженою заявкою.",
+        "time_off.request_created": "✅ Заявку створено: {days} днів з {start_date} по {end_date}. Очікується підтвердження керівника.",
+        "time_off.request_not_found": "❌ Заявку не знайдено.",
+        "time_off.request_already_processed": "⚠️ Ця заявка вже оброблена.",
+        "time_off.request_approved": "✅ Заявку підтверджено! Подію в календарі створено.",
+        "time_off.request_rejected": "❌ Заявку відхилено. {reason}",
+        "time_off.parse_error": "❌ Не вдалося розпізнати заявку: {error}",
+        "time_off.unknown_intent": "❌ Невідомий запит. Вкажіть: відпустка, лікарняний або перевірка балансу.",
+        "time_off.no_pending_requests": "✅ Немає заявок на відпустку, що очікують на погодження.",
+        "time_off.pending_requests_title": "Заявки на погодження",
     }
 }
 
 
-def get_translation(key: str, language: Language = Language.ENGLISH, **kwargs) -> str:
+def get_translation(
+    key: Union[str, TranslationKey], 
+    language: Language = Language.ENGLISH, 
+    **kwargs
+) -> str:
     """
     Gets a translation for a given key and language with optional formatting.
     Implements deep fallback: if key is missing in target language, falls back to English.
     
     Args:
-        key: Translation key (e.g., "module.people_ops")
+        key: Translation key (string or TranslationKey enum)
+            Examples: "message.greeting" or TranslationKey.MESSAGE_GREETING
         language: Target language
         **kwargs: Variables to format into the translation string (e.g., name="John")
         
@@ -148,13 +203,21 @@ def get_translation(key: str, language: Language = Language.ENGLISH, **kwargs) -
     Example:
         >>> get_translation("message.greeting", Language.ENGLISH, name="John")
         "Hello, John!"
+        >>> get_translation(TranslationKey.MESSAGE_GREETING, Language.ENGLISH, name="John")
+        "Hello, John!"
     """
-    if not key:
-        return key
+    # Convert TranslationKey enum to string if needed
+    key_str = key.value if isinstance(key, TranslationKey) else str(key)
+    
+    if not key_str:
+        return key_str
     
     # Try to get translation from target language
     translations = TRANSLATIONS.get(language)
     text = None
+    
+    # Use key_str instead of key from now on
+    key = key_str
     
     if translations:
         text = translations.get(key)
@@ -222,12 +285,12 @@ def get_capability_name(capability: BotCapability, language: Language = Language
     return get_translation(key, language, **kwargs)
 
 
-def get_intent_name(intent: BotIntent, language: Language = Language.ENGLISH, **kwargs) -> str:
+def get_intent_name(intent: AnyIntent, language: Language = Language.ENGLISH, **kwargs) -> str:
     """
-    Gets the translated name for a BotIntent
+    Gets the translated name for an intent
     
     Args:
-        intent: BotIntent enum value (can be None)
+        intent: AnyIntent enum value (can be None)
         language: Target language
         **kwargs: Optional variables to format into the translation string
         

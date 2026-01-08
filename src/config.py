@@ -2,12 +2,17 @@
 Application Configuration Module
 
 Organized into logical configuration classes for better maintainability.
-Refactored for Single Tenant Azure Bot support.
+Refactored for Vendor-Agnostic AI support (OpenAI, Gemini, Ollama, etc.)
+and strict security practices (SecretStr).
 """
+import logging
 from typing import Optional
 from pathlib import Path
-from pydantic import Field, AliasChoices
+from pydantic import Field, AliasChoices, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from enums.ai import AIProvider
+
+logger = logging.getLogger(__name__)
 
 # --- Paths ---
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -22,7 +27,7 @@ class AzureBotConfig(BaseSettings):
     APP_ID: str = Field(
         validation_alias=AliasChoices("BOT_ID", "MicrosoftAppId", "APP_ID")
     )
-    APP_PASSWORD: str = Field(
+    APP_PASSWORD: SecretStr = Field(
         validation_alias=AliasChoices(
             "BOT_PASSWORD", 
             "SECRET_BOT_PASSWORD", 
@@ -30,34 +35,52 @@ class AzureBotConfig(BaseSettings):
             "APP_PASSWORD"
         )
     )
-    # ЗМІНЕНО: Default is now SingleTenant. Added MicrosoftAppType alias.
     APP_TYPE: str = Field(
         default="SingleTenant",
         validation_alias=AliasChoices("BOT_TYPE", "APP_TYPE", "MicrosoftAppType")
     )
-    # ЗМІНЕНО: Added MicrosoftAppTenantId and TENANT_ID aliases.
     TENANT_ID: str = Field(
         default="",
         validation_alias=AliasChoices("TEAMS_APP_TENANT_ID", "MicrosoftAppTenantId", "TENANT_ID")
     )
     
     model_config = SettingsConfigDict(
-        env_file=[
-            ENV_DIR / ".env",
-            ENV_DIR / ".env.local",
-            ENV_DIR / ".env.local.user",
-        ],
+        env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
         env_ignore_empty=True,
-        extra="ignore",
-        case_sensitive=True
+        extra="ignore"
     )
 
 
-class OpenAIConfig(BaseSettings):
-    """OpenAI service configuration"""
-    
-    OPENAI_API_KEY: str
-    OPENAI_MODEL_NAME: str = Field(default="gpt-3.5-turbo")
+class AIConfig(BaseSettings):
+    """
+    Universal AI configuration class.
+    Replaces OpenAI-specific config with a vendor-agnostic approach.
+    """
+    AI_PROVIDER: AIProvider = Field(
+        default=AIProvider.OPENAI,
+        description="AI service provider (openai, gemini, ollama, anthropic)"
+    )
+    AI_MODEL_NAME: str = Field(
+        validation_alias=AliasChoices("AI_MODEL_NAME", "OPENAI_MODEL_NAME"),
+        description="Name of the AI model to use"
+    )
+    AI_API_KEY: Optional[SecretStr] = Field(
+        default=None,
+        validation_alias=AliasChoices("AI_API_KEY", "OPENAI_API_KEY"),
+        description="API Key for the AI provider"
+    )
+    AI_BASE_URL: Optional[str] = Field(
+        default=None,
+        description="Base URL for local models (Ollama/vLLM) or proxy"
+    )
+    AI_MAX_RETRIES: int = Field(
+        default=2, 
+        description="Maximum number of retries for AI API calls"
+    )
+    AI_RETRY_DELAY: float = Field(
+        default=1.0, 
+        description="Delay between AI retry attempts in seconds"
+    )
     
     model_config = SettingsConfigDict(
         env_file=[
@@ -69,57 +92,54 @@ class OpenAIConfig(BaseSettings):
         extra="ignore",
         case_sensitive=True
     )
+    
+    @model_validator(mode="after")
+    def validate_credentials(self):
+        """Ensure required credentials are provided based on AI provider"""
+        # Cloud providers that strictly require an API Key
+        cloud_providers = AIProvider.cloud_providers()
+        
+        if self.AI_PROVIDER in cloud_providers and not self.AI_API_KEY:
+            raise ValueError(f"AI_API_KEY is required for {self.AI_PROVIDER}")
+        return self
 
 
 class EmailConfig(BaseSettings):
     """Email service configuration (Azure Communication Services)"""
     
-    COMMUNICATION_CONNECTION_STRING: Optional[str] = None
+    COMMUNICATION_CONNECTION_STRING: Optional[SecretStr] = None
     MAIL_FROM_ADDRESS: Optional[str] = None
     
     model_config = SettingsConfigDict(
-        env_file=[
-            ENV_DIR / ".env",
-            ENV_DIR / ".env.local",
-            ENV_DIR / ".env.local.user",
-        ],
+        env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
         env_ignore_empty=True,
-        extra="ignore",
-        case_sensitive=True
+        extra="ignore"
     )
 
 
 class DatabaseConfig(BaseSettings):
     """Database configuration"""
     
-    # SQLite (default for local dev)
     DB_PATH: str = Field(default="time_off.db")
     
-    # PostgreSQL (for production/Docker)
     DB_HOST: Optional[str] = None
     DB_PORT: int = Field(default=5432)
     DB_NAME: Optional[str] = None
     DB_USER: Optional[str] = None
-    DB_PASSWORD: Optional[str] = None
+    DB_PASSWORD: Optional[SecretStr] = None
     
     @property
     def database_url(self) -> str:
         """Generate SQLAlchemy connection string"""
-        # Use PostgreSQL if credentials are provided
-        if self.DB_HOST and self.DB_NAME and self.DB_USER and self.DB_PASSWORD:
-            return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-        # Otherwise use SQLite
+        if self.DB_HOST and self.DB_NAME and self.DB_USER:
+            pwd = self.DB_PASSWORD.get_secret_value() if self.DB_PASSWORD else ""
+            return f"postgresql+asyncpg://{self.DB_USER}:{pwd}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         return f"sqlite+aiosqlite:///{self.DB_PATH}"
     
     model_config = SettingsConfigDict(
-        env_file=[
-            ENV_DIR / ".env",
-            ENV_DIR / ".env.local",
-            ENV_DIR / ".env.local.user",
-        ],
+        env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
         env_ignore_empty=True,
-        extra="ignore",
-        case_sensitive=True
+        extra="ignore"
     )
 
 
@@ -130,19 +150,10 @@ class AppConfig(BaseSettings):
     PORT: int = Field(default=3978)
     DEFAULT_LICENSE_SKU_ID: str = Field(default="")
     
-    # AI Retry Configuration
-    AI_MAX_RETRIES: int = Field(default=2, description="Maximum number of retries for AI API calls")
-    AI_RETRY_DELAY_SECONDS: float = Field(default=1.0, description="Delay between AI retry attempts in seconds")
-    
     model_config = SettingsConfigDict(
-        env_file=[
-            ENV_DIR / ".env",
-            ENV_DIR / ".env.local",
-            ENV_DIR / ".env.local.user",
-        ],
+        env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
         env_ignore_empty=True,
-        extra="ignore",
-        case_sensitive=True
+        extra="ignore"
     )
 
 
@@ -153,140 +164,131 @@ class DevConfig(BaseSettings):
     DEFAULT_APPROVER: Optional[str] = None
     
     model_config = SettingsConfigDict(
-        env_file=[
-            ENV_DIR / ".env",
-            ENV_DIR / ".env.local",
-            ENV_DIR / ".env.local.user",
-        ],
+        env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
         env_ignore_empty=True,
-        extra="ignore",
-        case_sensitive=True
+        extra="ignore"
     )
 
 
-# --- Main Configuration Class ---
+# --- Main Configuration Class (Facade) ---
 
 class Config:
     """
-    Main application configuration.
-    
-    Combines all configuration sections for easy access.
-    Maintains backward compatibility with flat attribute access.
+    Main application configuration facade.
+    Combines all sections and provides backward compatibility.
     """
     
     def __init__(self):
-        """Initialize Config by loading nested configs from environment."""
-        # Load each nested config from environment
         self.azure_bot = AzureBotConfig()
-        self.openai = OpenAIConfig()
+        self.ai = AIConfig()
         self.email = EmailConfig()
         self.database = DatabaseConfig()
         self.app = AppConfig()
         self.dev = DevConfig()
     
-    # --- Backward Compatibility: Flat Access ---
-    # These properties allow existing code to access config.APP_ID, config.DB_PATH, etc.
+    # --- Backward Compatibility Properties ---
     
     @property
     def APP_ID(self) -> str:
-        """Azure Bot App ID (backward compatibility)"""
         return self.azure_bot.APP_ID
     
     @property
     def APP_PASSWORD(self) -> str:
-        """Azure Bot App Password (backward compatibility)"""
-        return self.azure_bot.APP_PASSWORD
+        return self.azure_bot.APP_PASSWORD.get_secret_value()
     
     @property
     def APP_TYPE(self) -> str:
-        """Azure Bot App Type (backward compatibility)"""
         return self.azure_bot.APP_TYPE
     
     @property
     def TENANT_ID(self) -> str:
-        """Azure Tenant ID (backward compatibility)"""
         return self.azure_bot.TENANT_ID
     
     @property
+    def AI_API_KEY(self) -> str:
+        return self.ai.AI_API_KEY.get_secret_value() if self.ai.AI_API_KEY else ""
+
+    # Legacy alias for OpenAI-specific code
+    @property
     def OPENAI_API_KEY(self) -> str:
-        """OpenAI API Key (backward compatibility)"""
-        return self.openai.OPENAI_API_KEY
+        return self.AI_API_KEY
     
+    @property
+    def AI_PROVIDER(self) -> AIProvider:
+        return self.ai.AI_PROVIDER
+    
+    @property
+    def AI_API_BASE_URL(self) -> Optional[str]:
+        return self.ai.AI_BASE_URL
+    
+    @property
+    def AI_MODEL_NAME(self) -> str:
+        return self.ai.AI_MODEL_NAME
+
+    # Legacy alias for OpenAI-specific code
     @property
     def OPENAI_MODEL_NAME(self) -> str:
-        """OpenAI Model Name (backward compatibility)"""
-        return self.openai.OPENAI_MODEL_NAME
+        return self.AI_MODEL_NAME
     
     @property
+    def database_url(self) -> str:
+        return self.database.database_url
+    
+    @property
+    def PORT(self) -> int:
+        return self.app.PORT
+    
+    @property
+    def AI_MAX_RETRIES(self) -> int:
+        return self.ai.AI_MAX_RETRIES
+    
+    @property
+    def AI_RETRY_DELAY_SECONDS(self) -> float:
+        return self.ai.AI_RETRY_DELAY
+
+    @property
     def COMMUNICATION_CONNECTION_STRING(self) -> Optional[str]:
-        """Email Communication Connection String (backward compatibility)"""
-        return self.email.COMMUNICATION_CONNECTION_STRING
+        """Email Connection String (backward compatibility)"""
+        if self.email.COMMUNICATION_CONNECTION_STRING:
+            return self.email.COMMUNICATION_CONNECTION_STRING.get_secret_value()
+        return None
     
     @property
     def MAIL_FROM_ADDRESS(self) -> Optional[str]:
         """Email From Address (backward compatibility)"""
         return self.email.MAIL_FROM_ADDRESS
-    
+
     @property
     def DB_PATH(self) -> str:
         """Database Path (backward compatibility)"""
         return self.database.DB_PATH
-    
-    @property
-    def database_url(self) -> str:
-        """Database URL (backward compatibility)"""
-        return self.database.database_url
-    
+
     @property
     def PROJECT_NAME(self) -> str:
         """Project Name (backward compatibility)"""
         return self.app.PROJECT_NAME
-    
-    @property
-    def PORT(self) -> int:
-        """Application Port (backward compatibility)"""
-        return self.app.PORT
-    
+
     @property
     def DEFAULT_LICENSE_SKU_ID(self) -> str:
-        """Default License SKU ID (backward compatibility)"""
+        """License SKU ID (backward compatibility)"""
         return self.app.DEFAULT_LICENSE_SKU_ID
     
-    @property
-    def TEST_USER_ID(self) -> Optional[str]:
-        """Test User ID (backward compatibility)"""
-        return self.dev.TEST_USER_ID
     
-    @property
-    def DEFAULT_APPROVER(self) -> Optional[str]:
-        """Default Approver ID (backward compatibility)"""
-        return self.dev.DEFAULT_APPROVER
-    
-    @property
-    def AI_MAX_RETRIES(self) -> int:
-        """AI Max Retries (backward compatibility)"""
-        return self.app.AI_MAX_RETRIES
-    
-    @property
-    def AI_RETRY_DELAY_SECONDS(self) -> float:
-        """AI Retry Delay Seconds (backward compatibility)"""
-        return self.app.AI_RETRY_DELAY_SECONDS
-
 
 # --- Singleton Instance ---
 settings = Config()
 
 
-# --- Logging Function ---
 def log_settings():
-    """Log configuration settings (called from main.py, not on import)"""
-    masked_pwd = f"{settings.APP_PASSWORD[:3]}***" if settings.APP_PASSWORD else "❌ EMPTY"
+    """Safe logging of configuration."""
+    bot_pwd = settings.APP_PASSWORD
+    masked_pwd = f"{bot_pwd[:3]}***" if bot_pwd else "❌ EMPTY"
     
-    print("\n🔧 CONFIGURATION LOADED:")
-    print(f"   📂 Env Dir: {ENV_DIR}")
-    print(f"   🤖 Bot ID: {settings.APP_ID}")
-    print(f"   🔑 Password: {masked_pwd}")
-    print(f"   🏢 Tenant ID: {settings.TENANT_ID or '❌ Not set'}")
-    print(f"   ⚙️  App Type: {settings.APP_TYPE}")
-    print(f"   🗄️  DB URL: {settings.database_url}")
-    print("-" * 30)
+    logger.info("\n🔧 CONFIGURATION LOADED (Universal AI Mode):")
+    logger.info(f"   🤖 Bot ID: {settings.APP_ID}")
+    logger.info(f"   🔑 Bot Secret: {masked_pwd}")
+    logger.info(f"   🧠 AI Provider: {settings.ai.AI_PROVIDER.value}")
+    logger.info(f"   🧠 AI Model: {settings.AI_MODEL_NAME}")
+    logger.info(f"   🗄️  DB URL: {settings.database_url.split('@')[-1] if '@' in settings.database_url else settings.database.DB_PATH}")
+    logger.info("-" * 30)
+

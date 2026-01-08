@@ -18,6 +18,8 @@ from models.ai import AIResponse
 from utils.helpers import get_user_language
 from resources import get_translation
 
+from schemas.ai import UserIntent
+
 logger = logging.getLogger("HRBot")
 
 
@@ -115,14 +117,15 @@ class MessageRouter:
 
         await self._send_typing_indicator()
 
-        ai_response = await self._detect_intent(user_message)
+        user_intent = await self._detect_intent(user_message)
 
-        if not ai_response:
+        if not user_intent:
             return
 
-        intent = ai_response.intent or GeneralIntent.UNKNOWN.value
         await self.container.dispatcher.dispatch_intent(
-            self.ctx, intent, ai_response, self.container
+            self.ctx,  
+            user_intent, 
+            self.container
         )
 
     # =========================================================================
@@ -136,30 +139,23 @@ class MessageRouter:
         except Exception as e:
             logger.debug(f"⚠️ Silent typing indicator fail: {e}")
 
-    async def _detect_intent(self, user_message: str) -> AIResponse | None:
+    async def _detect_intent(self, user_message: str) -> UserIntent | None:
         """Detects and validates intent via AI."""
         logger.info(f"🤖 Detecting intent for: {user_message[:50]}...")
 
         try:
-            raw_intent_data = await self.container.ai_service.detect_intent(user_message)
-            ai_response = AIResponse.model_validate(raw_intent_data)
-
-            # Apply detected language to activity context
-            # This ensures get_user_language() will return the correct language
-            # without needing regex-based detection
+            intent_data = await self.container.ai_service.detect_intent(user_message)
+       
             if hasattr(self.ctx.activity, 'locale'):
-                # Map language code to Teams locale format
                 locale_map = {
                     "en": "en-US",
                     "uk": "uk-UA"
                 }
-                detected_locale = locale_map.get(ai_response.language, "en-US")
-                self.ctx.activity.locale = detected_locale
-                logger.info(f"🌐 Language detected: {ai_response.language} -> locale: {detected_locale}")
+                self.ctx.activity.locale = locale_map.get(intent_data.language, "en-US")
+                logger.info(f"🌐 Language detected: {intent_data.language} -> locale: {self.ctx.activity.locale}")
 
-            module_str = ai_response.module.value if ai_response.module else "none"
-            logger.info(f"✅ Intent detected: {ai_response.intent} (module={module_str}, language={ai_response.language})")
-            return ai_response
+            logger.info(f"✅ Intent detected: {intent_data.intent} (module={intent_data.module}, language={intent_data.language})")
+            return intent_data
 
         except Exception as e:
             logger.error(f"❌ AI/Validation failed: {e}", exc_info=True)

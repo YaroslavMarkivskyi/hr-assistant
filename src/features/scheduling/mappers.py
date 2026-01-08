@@ -1,148 +1,165 @@
-"""
-Request Mappers for Scheduling Module.
-
-Responsible for converting raw inputs (AI Entities, Action Payloads) 
-into strongly typed Request DTOs.
-"""
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime
+from typing import Any, Dict, List
 
-from models.ai import AIResponse
-from .models import (
+from enums.prompts import PromptKeys
+from services.ai.service import AIService
+from features.scheduling.models import (
     FindTimeRequest, 
-    BookMeetingRequest, 
-    Participant,
-    SchedulingResult,
-    TimeSlot,
-    ViewScheduleRequest,
+    ViewScheduleRequest, 
+    CancelMeetingRequest, 
     DailyBriefingRequest,
     IntentContext,
+    SchedulingResult,
+    TimeSlot,
     FindTimeViewModel
+)
+from schemas.ai.scheduling import (
+    ScheduleQueryEntities, 
+    ScheduleViewEntities, 
+    ScheduleCancelEntities
 )
 
 logger = logging.getLogger("HRBot")
 
-
 class SchedulingMapper:
     """
-    Static utility class for mapping inputs to Scheduling DTOs.
+    Responsible for converting:
+    1. Raw User Text -> Structured Service Requests (via AI)
+    2. Service Results -> UI View Models (for Adaptive Cards)
     """
 
+    # =========================================================================
+    # REQUEST MAPPERS (Text -> Data)
+    # =========================================================================
+
     @staticmethod
-    def map_find_time_intent(context: IntentContext) -> FindTimeRequest:
-        """
-        Maps IntentContext -> FindTimeRequest.
-        """
-        entities = context.ai_response.entities or {}
-        
-        logger.info(f"🧠 [Mapper] RAW ENTITIES from AI: {entities}")
-        
-        raw_participants = (
-            entities.get("participants") or 
-            entities.get("person") or 
-            entities.get("people") or 
-            []
+    async def map_to_find_time_request(ctx: IntentContext) -> FindTimeRequest:
+        """Extracts meeting details using AI."""
+        current_time = ctx.container.time_service.now()
+        context_str = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M')}"
+
+        entities = await ctx.container.ai_service.extract_data(
+            user_text=ctx.ctx.activity.text,
+            result_type=ScheduleQueryEntities,
+            prompt_key=PromptKeys.SCHEDULING_EXTRACT,
+            context=context_str
         )
         
-        names = SchedulingMapper._extract_names(raw_participants)
-        
-        logger.info(f"🧩 [Mapper] Extracted names: {names}")
-        
+        logger.info(f"🧠 [Mapper] Extracted FindTime entities: {entities}")
+
+        # 2. Mapping to DTO
         return FindTimeRequest(
-            requester_id=context.requester_id,
-            participant_names=names,
-            subject=entities.get("subject", "Meeting"),
-            duration_minutes=int(entities.get("duration", 30)),
-            start_date=entities.get("date"), 
-            end_date=entities.get("endDate")
+            requester_id=ctx.requester_id,
+            subject=entities.subject or "Meeting",
+            participant_names=entities.participants, # Це вже чистий List[str]!
+            duration_minutes=entities.duration_minutes or 30,
+            start_date=entities.date,
+            time_preference=entities.specific_time or entities.day_part
         )
 
     @staticmethod
-    def map_view_schedule_request(requester_id: str, ai_response: AIResponse) -> ViewScheduleRequest:
-        """
-        Maps AI response entities to ViewScheduleRequest DTO.
-        """
-        entities = ai_response.entities or {}
+    async def map_to_view_schedule_request(ctx: IntentContext) -> ViewScheduleRequest:
+        """Extracts target person and date."""
+        current_time = ctx.container.time_service.now()
+        context_str = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M')}"
+
+        entities = await ctx.container.ai_service.extract_data(
+            user_text=ctx.ctx.activity.text,
+            result_type=ScheduleViewEntities,
+            prompt_key=PromptKeys.SCHEDULING_VIEW,
+            context=context_str
+        )
+
+        current_user_name = ctx.ctx.activity.from_property.name
+        is_self = entities.target_person is None
         
         return ViewScheduleRequest(
-            requester_id=requester_id,
-            employee_id=entities.get("employee_id"),
-            employee_name=entities.get("person") or entities.get("employee_name"),
-            date=entities.get("date"),
+            requester_id=ctx.requester_id,
+            target_employee_name=current_user_name if is_self else entities.target_person,
+            target_employee_id=ctx.requester_id if is_self else None, 
+            date=entities.date,
             detailed=True
         )
 
     @staticmethod
-    def map_daily_briefing_request(requester_id: str, ai_response: AIResponse) -> DailyBriefingRequest:
-        """
-        Maps AI response entities to DailyBriefingRequest DTO.
-        """
-        entities = ai_response.entities or {}
-        return DailyBriefingRequest(
-            requester_id=requester_id,
-            date=entities.get("date")
+    async def map_to_cancel_request(ctx: IntentContext) -> CancelMeetingRequest:
+        """Extracts keywords to identify meeting to cancel."""
+        current_time = ctx.container.time_service.now()
+        context_str = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M')}"
+
+        entities = await ctx.container.ai_service.extract_data(
+            user_text=ctx.ctx.activity.text,
+            result_type=ScheduleCancelEntities,
+            prompt_key=PromptKeys.SCHEDULING_CANCEL,
+            context=context_str
+        )
+        
+        return CancelMeetingRequest(
+            requester_id=ctx.requester_id,
+            keywords=entities.subject_keywords,
+            participants=entities.participants,
+            target_date=entities.date
         )
 
-    # --- Helpers ---
+    @staticmethod
+    async def map_to_daily_briefing_request(ctx: IntentContext) -> DailyBriefingRequest:
+        """
+        Extracts date for briefing (e.g., 'briefing for tomorrow').
+        Uses the same prompt as View Schedule because semantics are similar.
+        """
+        current_time = ctx.container.time_service.now()
+        context_str = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M')}"
+
+        entities = await ctx.container.ai_service.extract_data(
+            user_text=ctx.ctx.activity.text,
+            result_type=ScheduleViewEntities,
+            prompt_key=PromptKeys.SCHEDULING_VIEW, 
+            context=context_str
+        )
+
+        return DailyBriefingRequest(
+            requester_id=ctx.requester_id,
+            date=entities.date
+        )
+
+    # =========================================================================
+    # VIEW MAPPERS (Data -> UI)
+    # =========================================================================
 
     @staticmethod
-    def _extract_names(raw_data: Any) -> List[str]:
-        """
-        Robustly extracts names from various input formats (str, list of strs, list of dicts).
-        """
-        names = []
-        
-        if isinstance(raw_data, str):
-            if raw_data.strip():
-                return [raw_data.strip()]
-            return []
-            
-        if isinstance(raw_data, list):
-            for item in raw_data:
-                if isinstance(item, str):
-                    if item.strip():
-                        names.append(item.strip())
-                elif isinstance(item, dict):
-                    name = (
-                        item.get("name") or 
-                        item.get("text") or 
-                        item.get("value") or 
-                        item.get("person")
-                    )
-                    if name and isinstance(name, str):
-                        names.append(name.strip())
-        
-        return names
-    
-    @staticmethod
-    def map_to_find_time_view(result: SchedulingResult, request: FindTimeRequest) -> Dict[str, Any]:
+    def map_to_find_time_view(result: SchedulingResult, request: FindTimeRequest) -> FindTimeViewModel:
         """
         Prepares data for the Find Time Adaptive Card.
-        Handles type conversions (dict -> TimeSlot) and fallbacks.
-        Returns a dictionary ready to be unpacked into create_find_time_card.
+        Handles both Pydantic models and Dictionaries safely.
         """
         data = result.data
         
+        if isinstance(data, dict):
+            raw_slots = data.get('slots', [])
+            subject = data.get('subject')
+            duration = data.get('duration')
+        else:
+            raw_slots = getattr(data, 'slots', [])
+            subject = getattr(data, 'subject', None)
+            duration = getattr(data, 'duration', None)
+
         slots = []
-        raw_slots = getattr(data, 'slots', []) or []
-        
         for slot in raw_slots:
-            if isinstance(slot, dict):
+            if isinstance(slot, TimeSlot):
+                slots.append(slot)
+            elif isinstance(slot, dict):
                 slots.append(TimeSlot(**slot))
+            elif hasattr(slot, 'model_dump'):
+                slots.append(TimeSlot(**slot.model_dump()))
             else:
                 slots.append(slot)
 
-        subject = getattr(data, 'subject', None) or request.subject
-        duration = getattr(data, 'duration', None) or request.duration_minutes
+        final_subject = subject or request.subject
+        final_duration = duration or request.duration_minutes
         
         return FindTimeViewModel(
             slots=slots,
-            subject=subject,
+            subject=final_subject,
             participants=result.resolved_participants,
-            duration=duration
+            duration=final_duration
         )
-    
-
-__all__ = ["SchedulingMapper"]
-

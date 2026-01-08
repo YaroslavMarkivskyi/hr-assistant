@@ -8,8 +8,10 @@ import logging
 
 from services.graph_service import GraphService
 from services.email_service import EmailService
-from services.openai_service import OpenAIService
+# from services.openai_service import OpenAIService
+from services.ai import AIService
 from services.user_search import UserSearchService
+from services.time import TimeService
 from db.database import DatabaseService
 from handlers.dispatcher import BotDispatcher
 # 1. FIX: Removed register_module, Added initialize_controllers
@@ -30,18 +32,14 @@ class ServiceContainer:
     """
     graph_service: GraphService
     email_service: EmailService
-    ai_service: "AIService"
+    ai_service: AIService
     user_search_service: UserSearchService
     scheduling_service: "SchedulingService"
     db_service: DatabaseService
     dispatcher: BotDispatcher
     config: Config
-    
-    @property
-    def openai_service(self) -> "AIService":
-        """Backward compatibility alias."""
-        return self.ai_service
-    
+    time_service: TimeService
+      
     @classmethod
     def create(cls, config: Config) -> 'ServiceContainer':
         """
@@ -49,11 +47,11 @@ class ServiceContainer:
         Now also handles Controller Initialization via Dependency Injection.
         """
         # 1. Create Base Services
-        ai_service = OpenAIService(config)
+        ai_service = AIService(config)
         graph_service = GraphService(config)
         email_service = EmailService(config)
         db_service = DatabaseService(db_path=config.DB_PATH)
-        
+        time_service = TimeService()
         # 2. Create Composite Services
         user_search_service = UserSearchService(
             graph_service=graph_service,
@@ -75,6 +73,7 @@ class ServiceContainer:
         container = cls(
             graph_service=graph_service,
             email_service=email_service,
+            time_service=time_service,
             ai_service=ai_service,
             user_search_service=user_search_service,
             scheduling_service=scheduling_service,

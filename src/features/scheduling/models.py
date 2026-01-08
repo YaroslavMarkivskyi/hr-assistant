@@ -9,6 +9,8 @@ from datetime import datetime
 from models.ai import AIResponse
 from models.action import ActionPayload
 from bot.activity_context_wrapper import ActivityContextWrapper
+from schemas.ai import UserIntent
+from container import ServiceContainer
 
 T = TypeVar('T', bound=BaseModel)
 
@@ -202,11 +204,12 @@ class BaseContext(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     requester_id: str
     ctx: ActivityContextWrapper
+    container: Any  # ServiceContainer
     
     
 class IntentContext(BaseContext):
     """Context model for intent handling"""
-    ai_response: AIResponse
+    user_intent: UserIntent
     
 
 class ActionContext(BaseContext):

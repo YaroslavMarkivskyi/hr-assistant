@@ -40,5 +40,8 @@ AnyIntent = Union[
 ]
 
 # Alias for backward compatibility (deprecated, use AnyIntent)
-BotIntent = AnyIntent
+BotIntent = Union[
+    SchedulingIntent,
+    GeneralIntent
+]
 

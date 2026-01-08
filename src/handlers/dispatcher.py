@@ -18,6 +18,8 @@ from models.action import ActionPayload
 from models.ai import AIResponse
 from utils.helpers import get_user_language
 from resources import get_translation
+from schemas.ai import UserIntent
+
 
 if TYPE_CHECKING:
     from bot.activity_context_wrapper import ActivityContextWrapper
@@ -94,8 +96,7 @@ class BotDispatcher:
     async def dispatch_intent(
         self,
         ctx: "ActivityContextWrapper",
-        intent: str,
-        ai_response: AIResponse,
+        user_intent: UserIntent,
         container: "ServiceContainer"
     ) -> None:
         """
@@ -110,32 +111,15 @@ class BotDispatcher:
             ai_response: Validated AIResponse model with full structured data
             container: Service container with all services
         """
-        # Determine module: trust AI's decision, or fallback to registry lookup
-        module = ai_response.module
         
-        if not module:
-            # General intents (chat, unknown) don't have a module
-            # Explicitly use GENERAL_MODULE constant for type safety and clarity
-            module = GENERAL_MODULE
-            controller = get_controller(GENERAL_MODULE)
-        else:
-            # Use registry to verify module owns this intent (safety check)
-            expected_module = get_module_for_intent(intent)
-            if expected_module and expected_module != module:
-                logger.warning(
-                    f"⚠️ Module mismatch: AI said '{module.value}', "
-                    f"but registry says '{expected_module.value}' for intent '{intent}'. "
-                    f"Using AI's decision."
-                )
+        controller = get_controller(user_intent.module)
+        
+        logger.info(f"🤖 Dispatching intent '{user_intent.intent}' to module '{user_intent.module}'")
             
-            # Level 2: Get module controller and delegate
-            controller = get_controller(module)
-        
         if not controller:
-            module_name = self._get_module_name(module)
             logger.warning(
-                f"⚠️ No controller registered for module '{module_name}' "
-                f"(intent: '{intent}')"
+                f"⚠️ CRITICAL: Module '{user_intent.module}' is defined in Enums "
+                f"but has NO REGISTERED CONTROLLER! Intent: '{user_intent.intent}'"
             )
             language = get_user_language(ctx)
             await ctx.send_activity(
@@ -143,7 +127,6 @@ class BotDispatcher:
             )
             return
 
-        module_name = self._get_module_name(module)
-        logger.info(f"🔄 Level 1: Routing INTENT '{intent}' to module '{module_name}'")
-        await controller.handle_intent(ctx, intent, ai_response, container)
+        logger.info(f"🔄 Level 1: Routing INTENT '{user_intent.intent}' to module '{user_intent.module}'")
+        await controller.handle_intent(ctx, user_intent, container)
 

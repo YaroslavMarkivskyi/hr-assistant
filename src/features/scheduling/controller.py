@@ -29,7 +29,7 @@ from .views import (
 from .models import TimeSlot, Participant, IntentContext
 from .mappers import SchedulingMapper
 from .service import SchedulingService
-
+from schemas.ai import UserIntent
 
 logger = logging.getLogger("HRBot")
 
@@ -63,8 +63,7 @@ class SchedulingController(BaseModuleController):
     async def handle_intent(
         self,
         ctx: ActivityContextWrapper,
-        intent: str,
-        ai_response: AIResponse,
+        user_intent: UserIntent,
         container: ServiceContainer
     ) -> None:
         """
@@ -78,29 +77,22 @@ class SchedulingController(BaseModuleController):
         """
         requester_id = await self._get_requester_id_or_error(ctx, container)
         if not requester_id: return
-        
-        # Get intent enum
-        try:
-            scheduling_intent = SchedulingIntent(intent)
-        except ValueError:
-            logger.warning(f"⚠️ Invalid Scheduling intent: {intent}")
-            await self._send_unhandled_request(ctx)
-            return
-        
-        handler = self._intent_handlers.get(scheduling_intent)
+                
+        handler = self._intent_handlers.get(user_intent.intent)
         if handler:
             context = IntentContext(
                 requester_id=requester_id,
                 ctx=ctx,
-                ai_response=ai_response
+                container=container,
+                user_intent=user_intent
             )
             try:
                 await handler(context)
             except Exception as e:
-                logger.error(f"❌ Error handling intent {intent}: {e}", exc_info=True)
+                logger.error(f"❌ Error handling intent {user_intent.intent}: {e}", exc_info=True)
                 await ctx.send_activity(f"Error processing request: {str(e)}")
         else:
-            logger.warning(f"⚠️ Unhandled Scheduling intent: {intent}")
+            logger.warning(f"⚠️ Unhandled Scheduling intent: {user_intent.intent}")
             await self._send_unhandled_request(ctx)
         
     async def handle_action(
@@ -154,9 +146,9 @@ class SchedulingController(BaseModuleController):
         request: IntentContext,
     ) -> None:
         """Handle find_time intent"""
-        # await self._send_localized(request.ctx, TranslationKey.SEARCHING_SLOTS)
+        await request.ctx.send_typing_activity()
         
-        map_request = SchedulingMapper.map_find_time_intent(request)
+        map_request = await SchedulingMapper.map_to_find_time_request(request)
         
         result = await self._service.find_time(map_request)
         
@@ -165,9 +157,7 @@ class SchedulingController(BaseModuleController):
             return
         
         map_view = SchedulingMapper.map_to_find_time_view(result, map_request)
-        
         card = create_find_time_card(map_view)
-        
         await request.ctx.send_adaptive_card(card)
     
     async def _handle_book_meeting_intent(

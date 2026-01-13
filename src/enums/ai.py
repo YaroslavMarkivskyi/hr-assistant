@@ -3,6 +3,7 @@ from enum import StrEnum
 
 class AIProvider(StrEnum):
     OPENAI = "openai"
+    AZURE = "azure"
     
 
     @classmethod
@@ -10,5 +11,6 @@ class AIProvider(StrEnum):
         """Returns a list of cloud-based AI providers"""
         return [
             cls.OPENAI,
+            cls.AZURE,
             ]
 

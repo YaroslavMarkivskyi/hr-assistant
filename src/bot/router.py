@@ -88,8 +88,6 @@ class MessageRouter:
         try:
             payload = ActionPayload.model_validate(raw_value)
         except Exception as validation_error:
-            # Якщо це виглядало як Action, але мало криві дані - це помилка розробника або UI.
-            # Ми НЕ відправляємо це в AI як текст. Ми просто логуємо помилку.
             logger.error(
                 f"❌ Invalid action payload structure: {validation_error}",
                 exc_info=True
@@ -103,7 +101,6 @@ class MessageRouter:
                 self.ctx, payload, self.container
             )
         except Exception as execution_error:
-            # Помилка під час виконання (БД, мережа, тощо) - не валідація!
             logger.error(
                 f"❌ Action execution failed for '{payload.action}': {execution_error}",
                 exc_info=True

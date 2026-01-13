@@ -2,15 +2,16 @@
 Adaptive Card views for Scheduling module.
 
 All UI rendering logic is centralized here.
-Now uses strongly typed ViewModels instead of raw dicts.
+Uses strongly typed ViewModels to ensure data consistency.
 """
 import logging
 import json
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import List, Dict, Any
 
 import adaptive_cards.card as ac
 
+from enums.bot import SchedulingAction
 from .models import (
     FindTimeViewModel, 
     ScheduleViewModel, 
@@ -24,7 +25,8 @@ logger = logging.getLogger("HRBot")
 
 def create_find_time_card(vm: FindTimeViewModel) -> dict:
     """
-    Create Adaptive Card showing available time slots using ViewModel.
+    Create Adaptive Card showing available time slots.
+    Payloads are structured to match BookSlotContext model.
     """
     card_body = [
         ac.TextBlock(
@@ -45,36 +47,57 @@ def create_find_time_card(vm: FindTimeViewModel) -> dict:
         )
     ]
     
-    # Add slots (Top 3)
-    # Ми впевнені, що vm.slots - це список об'єктів TimeSlot (Pydantic)
-    for idx, slot in enumerate(vm.slots[:3]):  
+    # Серіалізуємо учасників один раз, щоб передати їх у контекст бронювання.
+    # Pydantic model_dump(mode='json') зробить їх словниками.
+    participants_json = [p.model_dump(mode='json') for p in vm.participants]
+
+    # Відображаємо перші 3 слоти (або 5, як налаштуєте)
+    display_limit = 3
+    for idx, slot in enumerate(vm.slots[:display_limit]):  
         
-        # Форматування дати
-        start_dt = datetime.fromisoformat(slot.start_time.replace('Z', '+00:00'))
-        time_str = start_dt.strftime("%d.%m.%Y %H:%M")
+        # Форматування дати для відображення (UI)
+        try:
+            start_dt = datetime.fromisoformat(slot.start_time.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(slot.end_time.replace('Z', '+00:00'))
+            time_str = f"{start_dt.strftime('%H:%M')} - {end_dt.strftime('%H:%M')}"
+            date_str = start_dt.strftime("%d.%m.%Y")
+        except ValueError:
+            time_str = "Invalid Time"
+            date_str = ""
         
+        # Інформація про зайнятість (якщо це soft-booking)
         busy_info = ""
         if slot.busy_participants:
             busy_names = [p.get_display_name() for p in slot.busy_participants]
-            busy_info = f" (Зайняті: {', '.join(busy_names)})"
+            busy_info = f" (Конфлікт: {', '.join(busy_names)})"
         
+        # 👇 Підготовка контексту для дії BOOK_SLOT
+        # Ця структура має точно відповідати моделі BookSlotContext
+        book_context = {
+            "start": slot.start_time,  # ISO string
+            "end": slot.end_time,      # ISO string
+            "subject": vm.subject,
+            "duration": vm.duration,
+            "participants": participants_json
+        }
+
         card_body.append(
             ac.Container(
                 style="emphasis",
                 spacing="Medium",
                 items=[
                     ac.TextBlock(
-                        text=f"Слот {idx + 1}: {time_str}{busy_info}",
-                        weight="Bolder"
+                        text=f"📅 {date_str} | ⏰ {time_str}{busy_info}",
+                        weight="Bolder",
+                        wrap=True
                     ),
                     ac.ActionSet(
                         actions=[
                             ac.ActionSubmit(
                                 title="✅ Забронювати",
                                 data={
-                                    "action": "book_slot",
-                                    "slot_index": idx,
-                                    "slot_data": slot.model_dump() # Pydantic метод
+                                    "action": SchedulingAction.BOOK_SLOT, # "book_slot"
+                                    "context": book_context  # <--- ВАЖЛИВО: Дані всередині context
                                 }
                             )
                         ]
@@ -83,23 +106,26 @@ def create_find_time_card(vm: FindTimeViewModel) -> dict:
             )
         )
     
-    # "Show more" button
-    if len(vm.slots) > 3:
-        # Серіалізуємо всі слоти для передачі в payload кнопки
-        all_slots_dict = [s.model_dump() for s in vm.slots]
+    # Кнопка "Show more"
+    if len(vm.slots) > display_limit:
+        # Для пагінації беремо дату останнього показаного слота
+        last_slot = vm.slots[display_limit-1]
         
+        show_more_context = {
+            "subject": vm.subject,
+            "duration": vm.duration,
+            "next_page_date": last_slot.start_time,
+            "participants": participants_json
+        }
+
         card_body.append(
             ac.ActionSet(
                 actions=[
                     ac.ActionSubmit(
                         title="Показати більше варіантів",
                         data={
-                            "action": "show_more_slots", 
-                            "context": { # Запаковуємо в context, як ми і планували в ActionContext
-                                "all_slots": all_slots_dict,
-                                "subject": vm.subject,
-                                "duration": vm.duration
-                            }
+                            "action": SchedulingAction.SHOW_MORE_SLOTS,
+                            "context": show_more_context
                         }
                     )
                 ]
@@ -111,39 +137,51 @@ def create_find_time_card(vm: FindTimeViewModel) -> dict:
 
 
 def create_booking_confirmation_card(vm: BookingConfirmationViewModel) -> dict:
-    """Create booking confirmation card using ViewModel."""
+    """Create booking confirmation card."""
     card_body = [
         ac.TextBlock(
-            text="Підтвердження бронювання",
+            text="✅ Зустріч успішно створено!",
             weight="Bolder",
             size="Medium",
-            color="Accent"
+            color="Good" # Green color
         ),
         ac.FactSet(
             facts=[
                 ac.Fact(title="Тема:", value=vm.subject or "Meeting"),
-                ac.Fact(title="Тривалість:", value=f"{vm.duration} хвилин"),
+                ac.Fact(title="Тривалість:", value=f"{vm.duration} хв"),
             ]
         )
     ]
     
     if vm.start_time_str:
-         card_body.append(ac.TextBlock(text=f"Час: {vm.start_time_str}", size="Small"))
+         card_body.append(ac.TextBlock(text=f"⏰ Час: {vm.start_time_str}", size="Small", weight="Bolder"))
 
-    # Participants list
+    # Список учасників
     if vm.participants:
-        participants_text = "\n".join([f"• {p.get_display_name()}" for p in vm.participants])
-        card_body.append(ac.TextBlock(text="Учасники:", weight="Bolder", size="Small"))
-        card_body.append(ac.TextBlock(text=participants_text, wrap=True))
+        # Формуємо список імен
+        names = [p.get_display_name() for p in vm.participants]
+        # Якщо учасників багато, обрізаємо
+        if len(names) > 5:
+            names = names[:5] + [f"...ще {len(names)-5}"]
+            
+        participants_text = ", ".join(names)
+        
+        card_body.append(ac.TextBlock(text="👥 Учасники:", weight="Bolder", size="Small", spacing="Medium"))
+        card_body.append(ac.TextBlock(text=participants_text, wrap=True, isSubtle=True))
     
+    # Дії після створення
     actions = [
         ac.ActionSubmit(
-            title="✅ Підтвердити бронювання",
-            data={"action": "confirm_booking"}
+            title="📋 Деталі в календарі",
+            data={"action": SchedulingAction.VIEW_CALENDAR_DETAILS}
         ),
         ac.ActionSubmit(
-            title="➕ Додати групу",
-            data={"action": "add_group"}
+            title="❌ Скасувати",
+            data={
+                "action": SchedulingAction.CANCEL_MEETING,
+                # Тут можна передати ID зустрічі, якщо він є у ViewModel
+                # "context": {"meeting_id": vm.meeting_id} 
+            }
         )
     ]
     
@@ -152,13 +190,10 @@ def create_booking_confirmation_card(vm: BookingConfirmationViewModel) -> dict:
 
 
 def create_daily_briefing_card(vm: DailyBriefingViewModel) -> dict:
-    """
-    Create daily briefing card using ViewModel.
-    Note: Calculations are removed from here. The View just renders strings.
-    """
+    """Create daily briefing card."""
     card_body = [
         ac.TextBlock(
-            text=f"📅 Ваш календар на {vm.date_str}", # ViewModel вже має відформатовану дату
+            text=f"📅 Ваш календар на {vm.date_str}",
             weight="Bolder",
             size="Medium",
             color="Accent"
@@ -173,7 +208,7 @@ def create_daily_briefing_card(vm: DailyBriefingViewModel) -> dict:
     if vm.next_meeting_text:
         card_body.append(
             ac.TextBlock(
-                text=vm.next_meeting_text, # Напр: "⏰ Наступна зустріч через 15 хв: Daily"
+                text=vm.next_meeting_text,
                 weight="Bolder",
                 size="Small",
                 color="Attention"
@@ -181,13 +216,13 @@ def create_daily_briefing_card(vm: DailyBriefingViewModel) -> dict:
         )
     
     if vm.free_windows_text:
-        card_body.append(ac.TextBlock(text="🕐 Вільні вікна:", weight="Bolder", size="Small"))
-        card_body.append(ac.TextBlock(text=vm.free_windows_text, wrap=True))
+        card_body.append(ac.TextBlock(text="🕐 Вільні вікна:", weight="Bolder", size="Small", spacing="Medium"))
+        card_body.append(ac.TextBlock(text=vm.free_windows_text, wrap=True, isSubtle=True))
     
     actions = [
         ac.ActionSubmit(
-            title="📋 Деталі календаря",
-            data={"action": "view_calendar_details"}
+            title="📋 Повний розклад",
+            data={"action": SchedulingAction.VIEW_CALENDAR_DETAILS}
         )
     ]
     
@@ -196,7 +231,7 @@ def create_daily_briefing_card(vm: DailyBriefingViewModel) -> dict:
 
 
 def create_schedule_card(vm: ScheduleViewModel) -> dict:
-    """Create Adaptive Card with employee schedule timeline using ViewModel."""
+    """Create timeline schedule card."""
     card_body = [
         ac.TextBlock(
             text=f"📅 Розклад: {vm.employee_name}",
@@ -207,14 +242,19 @@ def create_schedule_card(vm: ScheduleViewModel) -> dict:
         ac.TextBlock(
             text=f"Дата: {vm.date_str}",
             size="Small",
-            spacing="Small"
+            spacing="Small",
+            isSubtle=True
         )
     ]
     
-    # Add timeline items
+    if not vm.grouped_slots:
+         card_body.append(ac.TextBlock(text="Запланованих зустрічей немає.", isSubtle=True))
+    
     for slot in vm.grouped_slots:
-        # Тут можна також зробити типи, але для простоти поки dict
-        time_str = f"🕘 {slot.get('start')} - {slot.get('end')}"
+        # Очікуємо slot як dict (якщо це raw structure) або об'єкт
+        # Для універсальності припускаємо dict, бо Timeline logic специфічна
+        start = slot.get('start', '')
+        end = slot.get('end', '')
         subject = slot.get('subject', 'Busy')
         
         card_body.append(
@@ -222,7 +262,11 @@ def create_schedule_card(vm: ScheduleViewModel) -> dict:
                 style="emphasis",
                 spacing="Small",
                 items=[
-                    ac.TextBlock(text=f"{time_str} | {subject}", wrap=True)
+                    ac.TextBlock(
+                        text=f"🕒 {start} - {end} | {subject}", 
+                        wrap=True,
+                        size="Small"
+                    )
                 ]
             )
         )
@@ -232,22 +276,33 @@ def create_schedule_card(vm: ScheduleViewModel) -> dict:
 
 
 def create_workshop_card() -> dict:
-    """Static card, no ViewModel needed yet."""
+    """Static placeholder card."""
     card_body = [
         ac.TextBlock(
-            text="Створення воркшопу/лекції",
+            text="🎓 Створення воркшопу",
             weight="Bolder",
             size="Medium",
             color="Accent"
         ),
         ac.TextBlock(
-            text="⚠️ Функціонал в розробці. Будь ласка, використовуйте текстові команди.",
+            text="Цей функціонал дозволить створити подію для великої групи людей.",
             wrap=True,
-            spacing="Medium"
+            spacing="Small"
+        ),
+        ac.TextBlock(
+            text="⚠️ Наразі в розробці.",
+            wrap=True,
+            spacing="Medium",
+            color="Warning"
         )
     ]
     
-    actions = [ac.ActionSubmit(title="✅ Створити воркшоп", data={"action": "confirm_workshop"})]
+    actions = [
+        ac.ActionSubmit(
+            title="Повідомити коли буде готово", 
+            data={"action": SchedulingAction.CONFIRM_WORKSHOP}
+        )
+    ]
     card = ac.AdaptiveCard(version="1.4", body=card_body, actions=actions)
     return clean_card_dict(card.to_dict())
 
@@ -255,7 +310,7 @@ def create_workshop_card() -> dict:
 def clean_card_dict(card_dict: dict) -> dict:
     """
     Recursively clean card dict to ensure JSON serializability.
-    Keeps helper logic centralized.
+    Prevents errors if Pydantic objects or non-serializable types slip in.
     """
     def _clean_value(value):
         if value is None:
@@ -267,11 +322,7 @@ def clean_card_dict(card_dict: dict) -> dict:
         elif isinstance(value, (list, tuple)):
             return [_clean_value(item) for item in value]
         else:
-            try:
-                # Try simple string conversion for generic objects
-                return str(value)
-            except Exception:
-                return str(value)
+            # Fallback for unexpected objects (like Enum or Pydantic models not dumped)
+            return str(value)
     
-    cleaned = _clean_value(card_dict)
-    return cleaned
+    return _clean_value(card_dict)

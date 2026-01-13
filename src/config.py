@@ -73,6 +73,11 @@ class AIConfig(BaseSettings):
         default=None,
         description="Base URL for local models (Ollama/vLLM) or proxy"
     )
+    AI_API_VERSION: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("AI_API_VERSION"),
+        description="API version for the AI provider if applicable"
+    )
     AI_MAX_RETRIES: int = Field(
         default=2, 
         description="Maximum number of retries for AI API calls"
@@ -224,6 +229,10 @@ class Config:
     @property
     def AI_MODEL_NAME(self) -> str:
         return self.ai.AI_MODEL_NAME
+    
+    @property
+    def AI_API_VERSION(self) -> Optional[str]:
+        return self.ai.AI_API_VERSION
 
     # Legacy alias for OpenAI-specific code
     @property

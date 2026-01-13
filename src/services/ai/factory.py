@@ -46,6 +46,30 @@ class AIModelFactory:
         return OpenAIChatModel(
             model_name=config.AI_MODEL_NAME
         )
+        
+    @classmethod
+    def _build_azure_model(cls, config: Config) -> Model:
+        """Builds Azure OpenAI model with proper AsyncClient."""
+        
+        from openai import AsyncAzureOpenAI
+        
+        if not config.AI_API_KEY:
+            raise ValueError("AI_API_KEY is required for Azure provider")
+        if not config.AI_BASE_URL:
+            raise ValueError("AI_BASE_URL is required for Azure provider")
+        if not config.AI_API_VERSION:
+            raise ValueError("AI_API_VERSION is required for Azure provider")
+        
+        client = AsyncAzureOpenAI(
+            api_key=config.AI_API_KEY,
+            base_url=config.AI_BASE_URL,
+            api_version=config.AI_API_VERSION
+        )
+        return OpenAIChatModel(
+            model_name=config.AI_MODEL_NAME,
+            client=client
+        )
+    
 
     # =========================================================================
     # REGISTRY
@@ -56,10 +80,10 @@ class AIModelFactory:
         """Maps providers to their builder methods."""
         return {
             AIProvider.OPENAI: cls._build_openai_model,
-            # AIProvider.AZURE: cls._build_azure_model,
+            AIProvider.AZURE: cls._build_azure_model,
             # AIProvider.ANTHROPIC: cls._build_anthropic_model,
         }
         
-        
+
 __all__ = ["AIModelFactory"]
 

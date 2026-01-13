@@ -6,51 +6,45 @@ It uses Pydantic for validation to avoid guessing payload structure
 and to ensure the action is a valid BotAction.
 """
 from __future__ import annotations
-
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from enums.bot import BotAction
+from enums.bot.registry import get_action_enum
+
 
 
 class ActionPayload(BaseModel):
     """
     Strict contract for button payloads.
-
-    Expected schema (example):
-    {
-        "action": "select_time_slot",
-        "context": {
-            "slot_id": "123",
-            "date": "2024-01-01"
-        }
-    }
-
-    Fields:
-    - action: must be a valid BotAction value
-    - context: optional dictionary with arbitrary extra data
     """
 
-    action: BotAction = Field(..., description="Action to perform, must be valid BotAction enum value")
+    action: BotAction = Field(
+        ..., 
+        description="Action to perform, must be valid BotAction enum value"
+        )
     context: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Optional contextual data for the action (card-specific payload)",
     )
 
-    @validator("action", pre=True)
+    @field_validator("action", mode="before")
+    @classmethod
     def validate_action(cls, v: Any) -> BotAction:
         """
         Ensure the action is a valid BotAction.
-
-        Accepts either a BotAction instance or its string value.
+        Converts string value to specific Enum member using registry lookup.
         """
-        if isinstance(v, BotAction):
+        if hasattr(v, "value"):
+            # Already an Enum member
             return v
-        try:
-            return BotAction(str(v))
-        except ValueError as exc:
-            # Re-raise as ValueError so router can distinguish validation errors
-            raise ValueError(f"Invalid action value: {v}") from exc
-
-
+        
+        str_value = str(v)
+        
+        action_enum = get_action_enum(str_value)
+        
+        if action_enum is None:
+            raise ValueError(f"Invalid action value: '{str_value}' is not registered in any module")
+        
+        return action_enum

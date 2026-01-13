@@ -3,7 +3,7 @@ Data models for Scheduling module.
 
 Uses Pydantic for data validation and serialization.
 """
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Any, Dict, List, Optional, Literal, Union, Generic, TypeVar
 from datetime import datetime
 from models.ai import AIResponse
@@ -242,3 +242,46 @@ class BookingConfirmationViewModel(BaseModel):
     duration: int
     start_time_str: Optional[str] = None
     agenda: Optional[str] = None
+    
+
+class BookSlotContext(BaseModel):
+    """Context model for booking a slot action"""
+    start: datetime
+    end: datetime
+    subject: str
+    duration: int
+    participants: List[Participant] = Field(default_factory=list)
+    agenda: Optional[str] = None
+    
+@field_validator("start", "end", mode="before")
+@classmethod
+def parse_datetime(cls, v: Any) -> str:
+    "Auto-convert ISO strings to datetime objects"
+    if isinstance(v, datetime):
+        return v
+    
+    if isinstance(v, str):
+        try:
+            clean_v = v.replace("Z", "+00:00")
+            return datetime.fromisoformat(clean_v)
+        except ValueError:
+            raise ValueError(f"Invalid datetime string: {v}")
+    raise ValueError(f"Unsupported type for datetime field: {type(v)}")
+
+
+class ShowMoreSlotsContext(BaseModel):
+    """Context model for showing more slots action"""
+    subject: str
+    duration: int
+    next_page_date: datetime
+    participants: List[Participant] = Field(default_factory=list)
+    
+    @field_validator("next_page_date", mode="before")
+    @classmethod
+    def parse_datetime(cls, v: Any) -> datetime:
+        if isinstance(v, str):
+            try:
+                clean_v = v.replace("Z", "+00:00")
+                return datetime.fromisoformat(clean_v)
+            except ValueError:
+                raise ValueError(f"Invalid datetime string: {v}")

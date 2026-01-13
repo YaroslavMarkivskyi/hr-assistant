@@ -12,13 +12,11 @@ from typing import Dict, Any, Callable
 from datetime import datetime, timedelta
 
 from bot.activity_context_wrapper import ActivityContextWrapper
-from enums.bot import SchedulingIntent, BotAction, BotModule
+from enums.bot import SchedulingIntent, SchedulingAction, BotModule
 from container import ServiceContainer
-from enums.translation_key import TranslationKey
 from handlers.base import BaseModuleController
 from handlers.registry import register_controller
 from models.action import ActionPayload
-from models.ai import AIResponse
 from .views import (
     create_find_time_card,
     create_booking_confirmation_card,
@@ -26,10 +24,13 @@ from .views import (
     create_daily_briefing_card,
     create_schedule_card,
 )
-from .models import TimeSlot, Participant, IntentContext
+from .models import TimeSlot, Participant, IntentContext, ActionContext
 from .mappers import SchedulingMapper
 from .service import SchedulingService
 from schemas.ai import UserIntent
+
+from .handlers import SchedulingActionHandler
+
 
 logger = logging.getLogger("HRBot")
 
@@ -38,16 +39,13 @@ logger = logging.getLogger("HRBot")
 class SchedulingController(BaseModuleController):
     """
     Controller for Scheduling module.
-    
-    Thin controller that:
-    - Routes intents/actions to service methods
-    - Handles service responses
-    - Creates UI (Adaptive Cards) via views
-    - Sends responses to user
+    Orchestrates flow between Dispatcher -> Service -> Views.
     """ 
     def __init__(self, service: SchedulingService):
         super().__init__(service)
-        self._intent_handlers: Dict[SchedulingIntent, Callable] = {
+        
+        # 1. Intent Map (Text -> Logic)
+        self._intent_handlers: Dict[SchedulingIntent, Callable[[IntentContext], Any]] = {
             SchedulingIntent.FIND_TIME: self._handle_find_time_intent,
             SchedulingIntent.BOOK_MEETING: self._handle_book_meeting_intent,
             SchedulingIntent.UPDATE_MEETING: self._handle_update_meeting_intent,
@@ -57,8 +55,11 @@ class SchedulingController(BaseModuleController):
             SchedulingIntent.VIEW_SCHEDULE: self._handle_view_schedule_intent,
         }
         
-        # TODO: Action map can be added similarly if needed
+        self._action_handler = SchedulingActionHandler(service)
     
+    # =========================================================================
+    # DISPATCHERS (Entry Points)
+    # =========================================================================
     
     async def handle_intent(
         self,
@@ -66,15 +67,7 @@ class SchedulingController(BaseModuleController):
         user_intent: UserIntent,
         container: ServiceContainer
     ) -> None:
-        """
-        Handles Scheduling module intents (text messages).
-        
-        Args:
-            ctx: Activity context wrapper
-            intent: Intent string (e.g., "find_time", "book_meeting")
-            ai_response: Validated AIResponse from AI service
-            container: Service container with all services
-        """
+        """Handles text commands via AI."""
         requester_id = await self._get_requester_id_or_error(ctx, container)
         if not requester_id: return
                 
@@ -101,55 +94,34 @@ class SchedulingController(BaseModuleController):
         payload: ActionPayload,
         container: ServiceContainer
     ) -> None:
-        """
-        Handles Scheduling module actions (button clicks from Adaptive Cards).
-        
-        Args:
-            ctx: Activity context
-            payload: Validated ActionPayload from the card
-            container: Service container with all services
-        """
-        action_enum = payload.action
+        """Routes action (button click) to appropriate handler."""
         requester_id = await self._get_requester_id_or_error(ctx, container)
+        if not requester_id: return
         
-        if not requester_id:
-            return
-        
-        # Extract context from payload
-        context = payload.context or {}
-        
-        service = container.scheduling_service
+        context = ActionContext(
+                requester_id=requester_id,
+                ctx=ctx,
+                container=container,
+                payload=payload
+        )
         
         try:
-            # Route actions to appropriate handlers
-            if action_enum in [BotAction.SELECT_TIME_SLOT, BotAction.SHOW_MORE_SLOTS, BotAction.BOOK_SLOT]:
-                await self._handle_find_time_action(ctx, service, requester_id, action_enum, context)
-            elif action_enum in [BotAction.CONFIRM_BOOKING, BotAction.ADD_EXTERNAL_GUEST, BotAction.ADD_GROUP]:
-                await self._handle_booking_action(ctx, service, requester_id, action_enum, context)
-            elif action_enum in [BotAction.RESCHEDULE_MEETING, BotAction.CANCEL_MEETING, BotAction.UPDATE_NOTIFICATION_PREFERENCE]:
-                await self._handle_crud_action(ctx, service, requester_id, action_enum, context)
-            elif action_enum in [BotAction.IGNORE_AVAILABILITY_TOGGLE, BotAction.CONFIRM_WORKSHOP]:
-                await self._handle_workshop_action(ctx, service, requester_id, action_enum, context)
-            elif action_enum == BotAction.VIEW_CALENDAR_DETAILS:
-                await self._handle_daily_briefing_action(ctx, service, requester_id, context)
-            else:
-                logger.warning(f"⚠️ Unhandled Scheduling action: {action_enum.value}")
-                await self._send_unhandled_request(ctx)
+            await self._action_handler.handle(context)
         except Exception as e:
-            logger.error(f"❌ Error handling action {action_enum.value}: {e}", exc_info=True)
-            await ctx.send_activity(f"Виникла помилка при обробці дії: {str(e)}")
+            logger.error(f"❌ Error handling action {payload.action}: {e}", exc_info=True)
+            await ctx.send_activity(f"Error processing action: {str(e)}")
+            logger.warning(f"⚠️ Unhandled Scheduling action: {payload.action}")
+            await self._send_unhandled_request(ctx)
     
-    # Intent handlers
+    # =========================================================================
+    # INTENT HANDLERS (Text)
+    # =========================================================================
     
-    async def _handle_find_time_intent(
-        self,
-        request: IntentContext,
-    ) -> None:
+    async def _handle_find_time_intent(self, request: IntentContext) -> None:
         """Handle find_time intent"""
         await request.ctx.send_typing_activity()
         
         map_request = await SchedulingMapper.map_to_find_time_request(request)
-        
         result = await self._service.find_time(map_request)
         
         if not result.success:
@@ -160,34 +132,29 @@ class SchedulingController(BaseModuleController):
         card = create_find_time_card(map_view)
         await request.ctx.send_adaptive_card(card)
     
-    async def _handle_book_meeting_intent(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        entities: Dict[str, Any]
-    ) -> None:
+    async def _handle_book_meeting_intent(self, request: IntentContext) -> None:
         """Handle book_meeting intent"""
+        entities = request.user_intent.entities
+        
         # Extract entities
         participants_data = entities.get("participants", [])
         subject = entities.get("subject", "Зустріч")
         duration = entities.get("duration", 30)
         agenda = entities.get("agenda")
         
-        # Convert participants from dict to Participant models
+        # Convert participants
         participants = [
             Participant(**p) if isinstance(p, dict) else p
             for p in participants_data
         ]
         
-        # Parse date/time
-        # TODO: Parse preferredDate and preferredTime to datetime
+        # Calculate time (Simple fallback logic for now)
         start_time = datetime.utcnow() + timedelta(hours=1)
         end_time = start_time + timedelta(minutes=duration)
         
-        # Call service
-        result = await service.book_meeting(
-            requester_id=requester_id,
+        # Call Service
+        result = await self._service.book_meeting(
+            requester_id=request.requester_id,
             subject=subject,
             participants=participants,
             start_time=start_time,
@@ -195,15 +162,12 @@ class SchedulingController(BaseModuleController):
             agenda=agenda
         )
         
-        # Handle result
         if not result.success:
-            await ctx.send_activity(result.error or "Помилка бронювання зустрічі")
+            await request.ctx.send_activity(result.error or "Помилка бронювання зустрічі")
             return
         
-        # Extract participants from result (they're already Participant models)
+        # Create View
         result_participants = result.resolved_participants or participants
-        
-        # Create confirmation card
         card = create_booking_confirmation_card(
             subject=subject,
             participants=result_participants,
@@ -212,114 +176,84 @@ class SchedulingController(BaseModuleController):
             duration=duration,
             agenda=agenda
         )
-        
-        await ctx.send_adaptive_card(card)
-    
-    async def _handle_update_meeting_intent(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        entities: Dict[str, Any]
-    ) -> None:
+        await request.ctx.send_adaptive_card(card)
+
+    async def _handle_update_meeting_intent(self, request: IntentContext) -> None:
         """Handle update_meeting intent"""
+        entities = request.user_intent.entities
         meeting_id = entities.get("meeting_id")
+        
         if not meeting_id:
-            await ctx.send_activity("Не вказано ID зустрічі для оновлення")
+            await request.ctx.send_activity("Не вказано ID зустрічі для оновлення")
             return
         
-        result = await service.update_meeting(
-            requester_id=requester_id,
+        result = await self._service.update_meeting(
+            requester_id=request.requester_id,
             meeting_id=meeting_id,
-            start_time=None,  # TODO: Parse from entities
+            start_time=None, 
             end_time=None,
             subject=entities.get("subject"),
             participants=entities.get("participants")
         )
         
         if not result.success:
-            await ctx.send_activity(result.error or "Помилка оновлення зустрічі")
+            await request.ctx.send_activity(result.error or "Помилка оновлення зустрічі")
         else:
-            await ctx.send_activity("Зустріч успішно оновлено")
-    
-    async def _handle_cancel_meeting_intent(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        entities: Dict[str, Any]
-    ) -> None:
+            await request.ctx.send_activity("Зустріч успішно оновлено")
+
+    async def _handle_cancel_meeting_intent(self, request: IntentContext) -> None:
         """Handle cancel_meeting intent"""
+        entities = request.user_intent.entities
         meeting_id = entities.get("meeting_id")
+        
         if not meeting_id:
-            await ctx.send_activity("Не вказано ID зустрічі для скасування")
+            await request.ctx.send_activity("Не вказано ID зустрічі для скасування")
             return
         
-        result = await service.cancel_meeting(
-            requester_id=requester_id,
+        result = await self._service.cancel_meeting(
+            requester_id=request.requester_id,
             meeting_id=meeting_id
         )
         
         if not result.success:
-            await ctx.send_activity(result.error or "Помилка скасування зустрічі")
+            await request.ctx.send_activity(result.error or "Помилка скасування зустрічі")
         else:
-            await ctx.send_activity("Зустріч успішно скасовано")
-    
-    async def _handle_create_workshop_intent(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        entities: Dict[str, Any]
-    ) -> None:
+            await request.ctx.send_activity("Зустріч успішно скасовано")
+
+    async def _handle_create_workshop_intent(self, request: IntentContext) -> None:
         """Handle create_workshop intent"""
         card = create_workshop_card()
-        await ctx.send_adaptive_card(card)
-    
-    async def _handle_daily_briefing_intent(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        entities: Dict[str, Any]
-    ) -> None:
+        await request.ctx.send_adaptive_card(card)
+
+    async def _handle_daily_briefing_intent(self, request: IntentContext) -> None:
         """Handle daily_briefing intent"""
-        # Date can be string ("tomorrow", "2023-10-15") - service will parse it
+        entities = request.user_intent.entities
         date = entities.get("date") or entities.get("preferredDate")
         
-        result = await service.daily_briefing(
-            requester_id=requester_id,
+        result = await self._service.daily_briefing(
+            requester_id=request.requester_id,
             date=date
         )
         
         if not result.success:
-            await ctx.send_activity(result.error or "Помилка отримання календаря")
+            await request.ctx.send_activity(result.error or "Помилка отримання календаря")
             return
         
-        # Create briefing card
         events = result.data.get("events", [])
         now = datetime.utcnow()
-        
         card = create_daily_briefing_card(events, now)
-        await ctx.send_adaptive_card(card)
-    
-    async def _handle_view_schedule_intent(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        entities: Dict[str, Any]
-    ) -> None:
+        await request.ctx.send_adaptive_card(card)
+
+    async def _handle_view_schedule_intent(self, request: IntentContext) -> None:
         """Handle view_schedule intent"""
-        # Extract employee info - can be ID or name
+        entities = request.user_intent.entities
         employee_id = entities.get("employee_id")
         employee_name = entities.get("employee_name")
-        # Date can be string ("tomorrow", "2023-10-15") or None - service will parse it
         date = entities.get("date") or entities.get("preferredDate")
-        detailed = entities.get("detailed", True)  # Default to detailed view
+        detailed = entities.get("detailed", True)
         
-        result = await service.view_schedule(
-            requester_id=requester_id,
+        result = await self._service.view_schedule(
+            requester_id=request.requester_id,
             employee_id=employee_id,
             employee_name=employee_name,
             date=date,
@@ -327,16 +261,14 @@ class SchedulingController(BaseModuleController):
         )
         
         if not result.success:
-            await ctx.send_activity(result.error or "Помилка перегляду розкладу")
+            await request.ctx.send_activity(result.error or "Помилка перегляду розкладу")
             return
         
-        # Create schedule card
+        # Prepare View
         timeline_slots = result.data.get("timeline_slots", [])
-        # Use resolved employee name from service or fallback
         resolved_employee_name = result.data.get("employee_name") or employee_name or "Користувач"
         date_str = result.data.get("date", datetime.utcnow().isoformat())
         
-        # Format date string for display
         try:
             date_obj = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
             date_display = date_obj.strftime("%d.%m.%Y")
@@ -348,71 +280,77 @@ class SchedulingController(BaseModuleController):
             date_str=date_display,
             grouped_slots=timeline_slots
         )
+        await request.ctx.send_adaptive_card(card)
+
+    # =========================================================================
+    # ACTION HANDLERS (Buttons)
+    # =========================================================================
+    
+    async def _handle_find_time_action(self, request: ActionContext) -> None:
+        """Handle actions related to finding time slots"""
+        action = request.payload.action
+        data = request.payload.context or {}
+
+        if action == SchedulingAction.BOOK_SLOT:
+            # ✅ Реалізація логіки кнопки "Забронювати"
+            await request.ctx.send_typing_activity()
+            
+            start_str = data.get("start")
+            end_str = data.get("end")
+            subject = data.get("subject", "Meeting")
+            
+            if not start_str or not end_str:
+                await request.ctx.send_activity("❌ Помилка: Некоректні дані слота.")
+                return
+
+            try:
+                start_time = datetime.fromisoformat(start_str)
+                end_time = datetime.fromisoformat(end_str)
+            except ValueError:
+                await request.ctx.send_activity("❌ Помилка: Невірний формат дати.")
+                return
+
+            # Викликаємо сервіс (тут поки заглушка, або ваш мок)
+            # Примітка: request.container.scheduling_service доступний через геттер self._service
+            result = await self._service.book_meeting(
+                requester_id=request.requester_id,
+                subject=subject,
+                participants=[], # TODO: Дістати учасників із контексту, якщо ми їх туди передавали
+                start_time=start_time,
+                end_time=end_time
+            )
+
+            if result.success:
+                # Відправляємо картку підтвердження
+                card = create_booking_confirmation_card(
+                    subject=subject,
+                    participants=[],
+                    start_time=start_time,
+                    end_time=end_time,
+                    duration=int((end_time - start_time).total_seconds() / 60)
+                )
+                await request.ctx.send_adaptive_card(card)
+            else:
+                await request.ctx.send_activity(f"❌ Не вдалося забронювати: {result.error}")
+
+        elif action == SchedulingAction.SHOW_MORE_SLOTS:
+            await request.ctx.send_activity("Функціонал 'Більше варіантів' в розробці 🚧")
         
-        await ctx.send_adaptive_card(card)
-    
-    # Action handlers
-    
-    async def _handle_find_time_action(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        action: BotAction,
-        context: Dict[str, Any]
-    ) -> None:
-        """Handle find time related actions"""
-        if action == BotAction.BOOK_SLOT:
-            # Book the selected slot
-            slot_data = context.get("slot_data", {})
-            # TODO: Implement booking from slot
-            await ctx.send_activity("Бронювання слота в розробці")
         else:
-            await ctx.send_activity("Дія в розробці")
+            await request.ctx.send_activity(f"Дія {action} ще не реалізована.")
     
-    async def _handle_booking_action(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        action: BotAction,
-        context: Dict[str, Any]
-    ) -> None:
-        """Handle booking related actions"""
-        if action == BotAction.CONFIRM_BOOKING:
-            # TODO: Extract booking data from context and call service.book_meeting
-            await ctx.send_activity("Підтвердження бронювання в розробці")
-        else:
-            await ctx.send_activity("Дія в розробці")
+    async def _handle_booking_action(self, request: ActionContext) -> None:
+        """Handle booking details actions"""
+        await request.ctx.send_activity("Дія бронювання в розробці")
     
-    async def _handle_crud_action(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        action: BotAction,
-        context: Dict[str, Any]
-    ) -> None:
+    async def _handle_crud_action(self, request: ActionContext) -> None:
         """Handle CRUD actions"""
-        await ctx.send_activity("Дія в розробці")
+        await request.ctx.send_activity("Дія редагування в розробці")
     
-    async def _handle_workshop_action(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        action: BotAction,
-        context: Dict[str, Any]
-    ) -> None:
-        """Handle workshop related actions"""
-        await ctx.send_activity("Дія в розробці")
+    async def _handle_workshop_action(self, request: ActionContext) -> None:
+        """Handle Workshop actions"""
+        await request.ctx.send_activity("Дія воркшопу в розробці")
     
-    async def _handle_daily_briefing_action(
-        self,
-        ctx: ActivityContextWrapper,
-        service,
-        requester_id: str,
-        context: Dict[str, Any]
-    ) -> None:
-        """Handle daily briefing actions"""
-        await ctx.send_activity("Дія в розробці")
+    async def _handle_daily_briefing_action(self, request: ActionContext) -> None:
+        """Handle Briefing details"""
+        await request.ctx.send_activity("Дія бриффінгу в розробці")

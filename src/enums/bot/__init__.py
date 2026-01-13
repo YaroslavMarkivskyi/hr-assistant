@@ -1,15 +1,8 @@
 """
 Bot enums package - Facade for easy imports
 
-This package provides a clean, organized structure for bot enums:
-- modules.py: BotModule definitions
-- intents.py: Intent enum definitions (SchedulingIntent, etc.)
-- actions.py: Action enum definitions (BotAction)
-- registry.py: Mappings, validation, and helper functions
-
-Usage:
-    from enums.bot import BotModule, SchedulingIntent, BotAction
-    from enums.bot import get_intent_enum, get_module_for_intent
+This package provides a clean, organized structure for bot enums.
+Updated to support module-specific Actions (SchedulingAction, GeneralAction).
 """
 # Import modules
 from .modules import BotModule
@@ -23,21 +16,29 @@ from .intents import (
 )
 
 # Import actions
-from .actions import BotAction
+from .actions import (
+    SchedulingAction,
+    GeneralAction,
+    AnyAction,
+    BotAction, # Alias for AnyAction (backward compatibility)
+)
 
 # Import registry (mappings and helpers)
 from .registry import (
     # Intent mappings
     MODULE_TO_INTENT_ENUM,
-    MODULE_INTENT_MAP,  # Alias for MODULE_TO_INTENT_ENUM
+    MODULE_INTENT_MAP,
     INTENT_TO_MODULE_MAP,
-    INTENT_MODULE_MAP,  # Alias for INTENT_TO_MODULE_MAP
+    INTENT_MODULE_MAP,
+    
     # Action mappings
-    ACTION_TO_MODULE_MAP,
+    ACTION_CLASS_TO_MODULE,
+    
     # Helper functions: Intents
     get_module_for_intent,
     validate_intent,
     get_intent_enum,
+    
     # Helper functions: Actions
     get_module_for_action,
     get_actions_by_module,
@@ -46,24 +47,32 @@ from .registry import (
 __all__ = [
     # Modules
     'BotModule',
+    
     # Intents
     'SchedulingIntent',
     'GeneralIntent',
     'AnyIntent',
     'BotIntent',
-    # Actions
+    
+    'SchedulingAction',
+    'GeneralAction',
+    'AnyAction',
     'BotAction',
+    
     # Intent mappings
     'MODULE_TO_INTENT_ENUM',
     'MODULE_INTENT_MAP',
     'INTENT_TO_MODULE_MAP',
     'INTENT_MODULE_MAP',
+    
     # Action mappings
-    'ACTION_TO_MODULE_MAP',
+    'ACTION_CLASS_TO_MODULE',
+    
     # Helper functions: Intents
     'get_module_for_intent',
     'validate_intent',
     'get_intent_enum',
+    
     # Helper functions: Actions
     'get_module_for_action',
     'get_actions_by_module',

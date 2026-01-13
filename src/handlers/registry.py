@@ -52,28 +52,13 @@ def initialize_controllers(container: "ServiceContainer") -> None:
     for module, cls in _REGISTERED_CLASSES.items():
         try:
             # --- DEPENDENCY INJECTION LOGIC ---
-            # Тут ми вирішуємо, який сервіс передати якому контролеру
-            
             if module == BotModule.SCHEDULING:
                 # SchedulingController вимагає SchedulingService
-                instance = cls(service=container.scheduling_service)
-                
-            # elif module == BotModule.VACATION:
-            #     # VacationController вимагає VacationService (приклад)
-            #     # instance = cls(service=container.vacation_service)
-            #     # Поки заглушка або реальний сервіс:
-            #     instance = cls(service=None) # Якщо сервісу ще немає
-
-            # elif module == GENERAL_MODULE:
-            #     # GeneralController може не вимагати сервісу або вимагати загальний
-            #     instance = cls(service=None) 
-                
+                instance = cls(service=container.scheduling_service)    
             else:
-                # Fallback для простих контролерів без явних залежностей
                 logger.warning(f"Initializing {cls.__name__} without service dependency.")
                 instance = cls(service=None)
 
-            # Зберігаємо готовий об'єкт
             _MODULE_CONTROLLERS[module] = instance
             logger.info(f"✅ Controller initialized: {cls.__name__} for module {module}")
             

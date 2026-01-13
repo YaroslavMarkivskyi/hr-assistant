@@ -83,11 +83,7 @@ class SchedulingActionHandler:
                     start_time_str=ctx.start.strftime("%Y-%m-%d %H:%M"),
                     agenda=ctx.agenda
                 ),
-                # meeting_link=result.join_url
             )
-            
-            
-            
             
             await request.ctx.send_adaptive_card(confirmation_card)
         else:

@@ -152,6 +152,8 @@ class AppConfig(BaseSettings):
     """General application configuration"""
     
     PROJECT_NAME: str = Field(default="HR Bot")
+    PROJECT_DESCRIPTION: str = Field(default="HR Onboarding Assistant Bot")
+    PROJECT_VERSION: str = Field(default="1.0.0")
     PORT: int = Field(default=3978)
     DEFAULT_LICENSE_SKU_ID: str = Field(default="")
     
@@ -282,7 +284,25 @@ class Config:
         """License SKU ID (backward compatibility)"""
         return self.app.DEFAULT_LICENSE_SKU_ID
     
+    @property
+    def TEST_USER_ID(self) -> Optional[str]:
+        """Test User ID (backward compatibility)"""
+        return self.dev.TEST_USER_ID
     
+    @property
+    def DEFAULT_APPROVER(self) -> Optional[str]:
+        """Default Approver (backward compatibility)"""
+        return self.dev.DEFAULT_APPROVER
+    
+    @property
+    def PROJECT_VERSION(self) -> str:
+        """Project Version (backward compatibility)"""
+        return self.app.PROJECT_VERSION
+    
+    @property
+    def PROJECT_DESCRIPTION(self) -> str:
+        """Project Description (backward compatibility)"""
+        return self.app.PROJECT_DESCRIPTION
 
 # --- Singleton Instance ---
 settings = Config()

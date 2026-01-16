@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from fastapi import FastAPI
 from api.routes import router
-from config import settings
+from core.config import settings
 
 from core.bootstrap import init_app
 from core.factory import register_routers

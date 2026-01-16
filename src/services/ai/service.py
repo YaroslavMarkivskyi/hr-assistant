@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
 
-from config import Config
+from core.config import Config
 from .factory import AIModelFactory
 from schemas.ai import UserIntent
 from enums.prompts import PromptKeys

@@ -11,7 +11,7 @@ from models.ai import AIResponse
 
 if TYPE_CHECKING:
     from bot.activity_context_wrapper import ActivityContextWrapper
-    from container import ServiceContainer
+    from core.containers.service_container import ServiceContainer
 
 # Constant for General module
 GENERAL_MODULE = None

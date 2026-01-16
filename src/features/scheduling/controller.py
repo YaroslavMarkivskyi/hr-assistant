@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 from bot.activity_context_wrapper import ActivityContextWrapper
 from enums.bot import SchedulingIntent, SchedulingAction, BotModule
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 from handlers.base import BaseModuleController
 from handlers.registry import register_controller
 from models.action import ActionPayload

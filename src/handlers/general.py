@@ -8,7 +8,7 @@ from enums.bot import AnyIntent
 from enums.translation_key import TranslationKey
 from resources import get_translation
 from utils.helpers import get_user_language
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 from models.ai import AIResponse
 
 

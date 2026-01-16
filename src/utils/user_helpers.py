@@ -2,7 +2,7 @@
 Helper functions for extracting user information from Teams context
 """
 from microsoft.teams.apps import ActivityContext
-from config import Config
+from core.config import Config
 
 
 def get_user_aad_id(ctx: ActivityContext, config: Config) -> str | None:

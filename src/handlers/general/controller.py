@@ -9,7 +9,7 @@ from typing import Dict, Callable, Awaitable
 from bot.activity_context_wrapper import ActivityContextWrapper
 from enums.bot import GeneralIntent, AnyIntent
 from enums.translation_key import TranslationKey
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 from handlers.base import BaseModuleController
 from handlers.registry import register_controller, GENERAL_MODULE
 from models.action import ActionPayload

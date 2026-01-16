@@ -3,9 +3,9 @@ Bootstrap module for initializing application dependencies and state.
 """
 import logging
 from fastapi import FastAPI
-from config import Config
-from container import ServiceContainer
-from bot.container import BotContainer
+from core.config import Config
+from core.containers.service_container import ServiceContainer
+from core.containers.bot_container import BotContainer
 
 logger = logging.getLogger(__name__)
 

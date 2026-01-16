@@ -18,7 +18,7 @@ from botbuilder.schema import Activity
 from botbuilder.core import TurnContext
 
 if TYPE_CHECKING:
-    from bot.container import BotContainer
+    from core.containers.bot_container import BotContainer
 
 logger = logging.getLogger("HRBot")
 

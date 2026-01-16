@@ -12,7 +12,7 @@ from botbuilder.core import (
     TurnContext,
 )
 from botframework.connector.auth import AuthenticationConfiguration
-from config import settings
+from core.config import settings
 
 logger = logging.getLogger("HRBot")
 

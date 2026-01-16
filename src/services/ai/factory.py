@@ -4,7 +4,7 @@ from typing import Dict, Callable
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 
-from config import Config
+from core.config import Config
 from enums.ai import AIProvider
 
 

@@ -9,7 +9,7 @@ from botbuilder.core import TurnContext, ConversationState
 from botbuilder.schema import ActivityTypes
 from bot.activity_context_wrapper import ActivityContextWrapper
 from bot.router import MessageRouter
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 from utils.helpers import get_user_language
 from resources import get_translation
 from enums.translation_key import TranslationKey

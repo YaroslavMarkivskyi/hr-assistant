@@ -15,7 +15,7 @@ from botbuilder.core import BotFrameworkAdapter, ConversationState
 from bot.adapter import create_adapter
 from bot.state import create_conversation_state
 from bot.logic import HRBot
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 
 logger = logging.getLogger("HRBot")
 

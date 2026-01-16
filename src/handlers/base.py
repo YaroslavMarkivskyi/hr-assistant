@@ -16,7 +16,7 @@ from utils.helpers import get_user_language
 
 if TYPE_CHECKING:
     from bot.activity_context_wrapper import ActivityContextWrapper
-    from container import ServiceContainer
+    from core.containers.service_container import ServiceContainer
 
 logger = logging.getLogger("HRBot")
 

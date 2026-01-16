@@ -3,7 +3,7 @@ from typing import Dict, Callable, Any
 
 from bot.activity_context_wrapper import ActivityContextWrapper
 from enums.bot import BotModule
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 
 from handlers.base import BaseModuleController
 from handlers.registry import register_controller

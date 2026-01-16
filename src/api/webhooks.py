@@ -18,7 +18,7 @@ from botbuilder.schema import Activity
 from botbuilder.core import TurnContext
 
 if TYPE_CHECKING:
-    from bot.container import BotContainer
+    from core.containers.bot_container import BotContainer
 
 logger = logging.getLogger("HRBot")
 
@@ -71,7 +71,7 @@ async def health():
     return {"status": "ok"}
 
 
-@router.post("/api/messages")
+@router.post("/messages")
 async def messages(request: Request):
     """
     Teams Bot Framework endpoint.

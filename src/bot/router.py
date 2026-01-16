@@ -12,7 +12,7 @@ import logging
 from bot.activity_context_wrapper import ActivityContextWrapper
 from enums.bot import GeneralIntent
 from enums.translation_key import TranslationKey
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 from models.action import ActionPayload
 from models.ai import AIResponse
 from utils.helpers import get_user_language

@@ -16,7 +16,7 @@ from db.database import DatabaseService
 from handlers.dispatcher import BotDispatcher
 # 1. FIX: Removed register_module, Added initialize_controllers
 from handlers.registry import initialize_controllers, GENERAL_MODULE
-from config import Config
+from core.config import Config
 
 from features.timeoff.repository import TimeOffRepository
 

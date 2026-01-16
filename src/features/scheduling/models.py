@@ -10,7 +10,7 @@ from models.ai import AIResponse
 from models.action import ActionPayload
 from bot.activity_context_wrapper import ActivityContextWrapper
 from schemas.ai import UserIntent
-from container import ServiceContainer
+from core.containers.service_container import ServiceContainer
 
 T = TypeVar('T', bound=BaseModel)
 

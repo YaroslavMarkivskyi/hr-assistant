@@ -8,8 +8,8 @@ from azure.identity import ManagedIdentityCredential
 from botbuilder.core import MemoryStorage
 from microsoft.teams.apps import App, ActivityContext
 
-from config import Config
-from container import ServiceContainer
+from core.config import Config
+from core.containers.service_container import ServiceContainer
 from bot.router import MessageRouter
 
 # Initialize configuration

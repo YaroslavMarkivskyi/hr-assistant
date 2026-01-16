@@ -18,9 +18,12 @@ from handlers.dispatcher import BotDispatcher
 from handlers.registry import initialize_controllers, GENERAL_MODULE
 from config import Config
 
+from features.timeoff.repository import TimeOffRepository
+
 if TYPE_CHECKING:
     from interfaces.ai_service import AIService
     from features.scheduling.service import SchedulingService
+    from features.timeoff.service import TimeOffService
 
 logger = logging.getLogger("HRBot")
 
@@ -35,6 +38,7 @@ class ServiceContainer:
     ai_service: AIService
     user_search_service: UserSearchService
     scheduling_service: "SchedulingService"
+    time_off_service: "TimeOffService"
     db_service: DatabaseService
     dispatcher: BotDispatcher
     config: Config
@@ -65,11 +69,21 @@ class ServiceContainer:
             user_search_service=user_search_service
         )
         
+        from features.timeoff.service import TimeOffService
+        session = db_service.get_session()
+        time_off_repo = TimeOffRepository(session)
+        time_off_service = TimeOffService(
+            graph_service=graph_service,
+            time_off_repository=time_off_repo,
+            user_search_service=user_search_service
+        )
+        
+        
+        
         # 3. Create Dispatcher
         dispatcher = BotDispatcher()
         
         # 4. Create Container Instance
-        # Ми створюємо об'єкт контейнера ТУТ, щоб мати змогу передати його в initialize_controllers
         container = cls(
             graph_service=graph_service,
             email_service=email_service,
@@ -77,6 +91,7 @@ class ServiceContainer:
             ai_service=ai_service,
             user_search_service=user_search_service,
             scheduling_service=scheduling_service,
+            time_off_service=time_off_service,
             db_service=db_service,
             dispatcher=dispatcher,
             config=config
@@ -91,6 +106,13 @@ class ServiceContainer:
             logger.info("Controllers modules imported successfully.")
         except ImportError as e:
             logger.error(f"Failed to import controllers: {e}")
+            raise
+        
+        try:
+            from features.timeoff.controller import TimeOffController  # noqa: F401
+            logger.info("TimeOffController module imported successfully.")
+        except ImportError as e:
+            logger.error(f"Failed to import TimeOffController: {e}")
             raise
 
         # 6. Initialize Controllers (Dependency Injection)

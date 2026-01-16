@@ -15,4 +15,5 @@ class BotModule(StrEnum):
     """
     SCHEDULING = "scheduling"  # Smart scheduling with availability, booking, CRUD, workshops, daily briefing
     GENERAL = "general"        # General Q&A, FAQs, company policies, knowledge base
+    TIME_OFF = "timeoff"      # Time off management: leave requests, approvals, balances
 

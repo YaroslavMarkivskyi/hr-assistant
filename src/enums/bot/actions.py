@@ -45,6 +45,12 @@ class GeneralAction(StrEnum):
     Provide_Feedback = "provide_feedback"
 
 
+class TimeOffAction(StrEnum):
+    """Actions related to Time Off Module"""
+    SUBMIT_REQUEST = "submit_timeoff_request"
+    CANCEL_MY_REQUEST = "cancel_my_timeoff_request"
+
+
 # ============================================================================
 # Type Alias for Type Hinting
 # ============================================================================
@@ -52,7 +58,8 @@ class GeneralAction(StrEnum):
 # Union type for all actions (use this in Dispatcher and ActionPayload)
 AnyAction = Union[
     SchedulingAction,
-    GeneralAction
+    GeneralAction,
+    TimeOffAction
 ]
 
 # Alias for backward compatibility if needed

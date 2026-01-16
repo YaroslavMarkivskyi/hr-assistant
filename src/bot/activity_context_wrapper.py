@@ -4,11 +4,14 @@ ActivityContext Wrapper
 Adapts Bot Framework TurnContext to ActivityContext API.
 This allows existing router and handlers to work with TurnContext.
 """
+import logging  
 import json
 from typing import Any, Union, Dict
 from botbuilder.core import TurnContext
 from botbuilder.schema import Activity, ActivityTypes, Attachment
 
+
+logger = logging.getLogger(__name__)
 
 class ActivityContextWrapper:
     """

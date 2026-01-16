@@ -29,6 +29,15 @@ class GeneralIntent(StrEnum):
     UNKNOWN = "unknown"  # When LLM cannot determine the intent
 
 
+class TimeOffIntent(StrEnum):
+    """Time off management module intents"""
+    REQUEST_LEAVE = "request_leave"  # Submit a leave request
+    CHECK_BALANCE = "check_balance"  # Check leave balances
+    VIEW_REQUESTS = "view_requests"  # View status of leave requests
+    CANCEL_REQUEST = "cancel_request"  # Cancel a leave request
+
+
+
 # ============================================================================
 # Type Alias for Type Hinting
 # ============================================================================
@@ -36,12 +45,14 @@ class GeneralIntent(StrEnum):
 # Union type for all intents (used for type hints)
 AnyIntent = Union[
     SchedulingIntent,
-    GeneralIntent
+    GeneralIntent,
+    TimeOffIntent
 ]
 
 # Alias for backward compatibility (deprecated, use AnyIntent)
 BotIntent = Union[
     SchedulingIntent,
-    GeneralIntent
+    GeneralIntent,
+    TimeOffIntent
 ]
 

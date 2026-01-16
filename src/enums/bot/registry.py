@@ -21,6 +21,7 @@ from .actions import (
     GeneralAction,
     AnyAction,
     BotAction, # Alias
+    TimeOffAction,
 )
 
 
@@ -58,6 +59,7 @@ MODULE_INTENT_MAP = MODULE_TO_INTENT_ENUM
 ACTION_CLASS_TO_MODULE: Dict[Type[StrEnum], BotModule] = {
     SchedulingAction: BotModule.SCHEDULING,
     GeneralAction: BotModule.GENERAL, 
+    TimeOffAction: BotModule.TIME_OFF,
 }
 
 # Map: Action String -> BotModule (O(1) lookup)

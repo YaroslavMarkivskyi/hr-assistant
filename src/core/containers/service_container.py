@@ -3,7 +3,8 @@ from dataclasses import dataclass
 from typing import Dict, Any, TYPE_CHECKING
 
 from core.config import Config
-from core.enums.bot.modules import BotModule
+from core.enums.bot import BotModule
+from core.base import BaseModule
 
 from services.ai import AIService
 from services.email_service import EmailService
@@ -39,8 +40,7 @@ class ServiceContainer:
     classifier: RequestClassifier
     dispatcher: BotDispatcher
     
-    # TODO: Add other skeleton instead of Any
-    features: Dict[str, Any]  # Placeholder for feature-specific services
+    features: Dict[BotModule, BaseModule]  # Placeholder for feature-specific services
 
     @classmethod
     def create(cls, config: Config) -> 'ServiceContainer':

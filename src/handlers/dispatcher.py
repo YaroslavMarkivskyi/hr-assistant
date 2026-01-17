@@ -1,5 +1,5 @@
 import logging
-from typing import TYPE_CHECKING, Optional, Any
+from typing import TYPE_CHECKING, Optional, Callable, Union, Awaitable, Dict
 
 from core.enums.bot import (
     BotModule,
@@ -9,6 +9,7 @@ from core.enums.bot import (
 )
 from core.enums.translation_key import TranslationKey
 from core.utils.helpers import get_user_language
+from core.base import BaseController
 
 from schemas.bot import ActionPayload, IntentPayload
 
@@ -18,12 +19,25 @@ from resources import get_translation
 if TYPE_CHECKING:
     from bot.activity_context_wrapper import ActivityContextWrapper
     from core.containers.service_container import ServiceContainer
+    from schemas.bot import ClassifiedRequest
     
 
 logger = logging.getLogger(__name__)
 
 
+HandlerType = Callable[
+    ["ActivityContextWrapper", Union[ActionPayload, IntentPayload], "ServiceContainer"],
+    Awaitable[None]
+]
+
+
 class BotDispatcher:
+
+    def __init__(self) -> None:
+        self._handlers: Dict[BotRequestType, HandlerType] = {
+            BotRequestType.ACTION: self._dispatch_action,
+            BotRequestType.INTENT: self._dispatch_intent,
+        }
     
     async def dispatch(
         self,
@@ -34,15 +48,8 @@ class BotDispatcher:
         """
         Level 1 dispatcher: Routes messages to module controllers.
         """
-        if request.request_type == BotRequestType.ACTION:
-            await self._dispatch_action(ctx, request.payload, container)
-        elif request.request_type == BotRequestType.INTENT:
-            await self._dispatch_intent(ctx, request.payload, container)
-        else:
-            await self._handle_non_routable_request(
-                ctx, 
-                f"Unknown request type: {request.request_type}"
-                )
+        handler = self._handlers.get(request.request_type, self._handle_unknown_type)
+        await handler(ctx, request.payload, container)
             
     async def _dispatch_action(
         self,
@@ -53,21 +60,15 @@ class BotDispatcher:
         """
         Level 1: Routes action (button click) to appropriate module controller.
         """
-        module_key = get_module_for_action(payload.action)
-        if not module_key:
-            await self._handle_non_routable_request(
-                ctx, 
-                f"Unknown action '{payload.action}' - no module found in registry"
-            )
-            return
-
-        controller = await self._resolve_controller(
-            container,
-            module_key
+        await self._process_routing(
+            ctx=ctx,
+            container=container,
+            payload=payload,
+            module_key=get_module_for_action(payload.action),
+            handle_method="handle_action",
+            log_label="ACTION"
         )
-        if controller:
-            logger.info(f"Routing ACTION '{payload.action}' to module '{module_key.value}'")
-            await controller.handle_action(ctx, payload, container)
+        
             
     async def _dispatch_intent(
         self,
@@ -78,38 +79,84 @@ class BotDispatcher:
         """
         Level 1: Routes AI intent to appropriate module controller.
         """
-        module_key = get_module_for_intent(payload.intent)
-        if not module_key:
-            await self._handle_non_routable_request(
-                ctx, 
-                f"Unknown intent '{payload.intent}' - no module found in registry"
-            )
-            return
-
-        controller = await self._resolve_controller(
-            container,
-            module_key
+        await self._process_routing(
+            ctx=ctx,
+            container=container,
+            payload=payload,
+            module_key=get_module_for_intent(payload.intent),
+            handle_method="handle_intent",
+            log_label="INTENT"
         )
-        if controller:
-            logger.info(f"Routing INTENT '{payload.intent}' to module '{module_key.value}'")
-            await controller.handle_intent(ctx, payload, container)
+            
+    async def _handle_unknown_type(
+        self,
+        ctx: "ActivityContextWrapper",
+        payload: Union[ActionPayload, IntentPayload],
+        container: "ServiceContainer"
+    ) -> None:
+        """
+        Handle unknown request types.
+        """
+        await self._report_routing_error(
+            ctx, 
+            f"Unknown request type encountered during dispatch."
+        )
     
-    # TODO: Return type hint for ClassifiedRequest
-    def _resolve_controller(
-        self, 
+    async def _process_routing(
+        self,
+        ctx: "ActivityContextWrapper",
         container: "ServiceContainer",
-        module_key: BotModule
-        ) -> Optional[Any]:
+        payload: Union[ActionPayload, IntentPayload],
+        module_key: Optional[BotModule],
+        handle_method: str,
+        log_label: str
+    ) -> None:
         """
-        Attempts to find a controller for the module. 
-        If missing, handles the error communication automatically.
+        Centralized processing logic for routing to controllers.
         """
-        controller = container.features.get(module_key)
+        
+        controller = await self.resolve_controller(
+            container,
+            module_key,
+            log_label
+        )
         if not controller:
-            logger.error(f"No controller found for module: {module_key}")
-        return controller
+            return await self._report_routing_error(
+                ctx, 
+                f"CRITICAL: No controller resolved for module {module_key} during {log_label} routing."
+            )
+
+        try:
+            handle_func = getattr(controller, handle_method)
+            logger.info(f"{log_label} routed to {controller.__class__.__name__} for module {module_key}")
+            await handle_func(ctx, payload)
+        except Exception as e:
+            logger.error(f"Error while handling {log_label} in {controller.__class__.__name__}: {e}", exc_info=True)
+            await self._report_routing_error(
+                ctx, 
+                f"Error processing your request. Please try again later."
+            )
     
-    async def _handle_non_routable_request(
+    async def resolve_controller(
+        self,
+        container: "ServiceContainer",
+        module_key: BotModule,
+        log_label: str
+    ) -> Optional[BaseController]:
+        """
+        Resolve and return the controller for a given module key.
+        """
+        if not module_key:
+            logger.error(f"CRITICAL: {log_label} is not mapped to any module in registry.py")
+            return
+        
+        feature = container.features.get(module_key)
+        if not feature:
+            logger.error(f"CRITICAL: No controller found for module {module_key} during resolution.")
+            return None
+        return feature.controller
+    
+    async def _report_routing_error(
         self, 
         ctx: "ActivityContextWrapper", 
         log_message: str
@@ -128,131 +175,3 @@ __all__ = (
     "BotDispatcher",
 )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# import logging
-# from typing import TYPE_CHECKING, Optional
-
-# from enums.bot import BotModule, get_module_for_action
-# from enums.translation_key import TranslationKey
-# from handlers.registry import get_controller
-# from models.action import ActionPayload
-# from utils.helpers import get_user_language
-# from resources import get_translation
-# from schemas.ai import UserIntent
-
-# if TYPE_CHECKING:
-#     from bot.activity_context_wrapper import ActivityContextWrapper
-#     from core.containers.service_container import ServiceContainer
-#     from handlers.registry import ModuleController
-
-# logger = logging.getLogger("HRBot")
-
-
-# class BotDispatcher:
-#     """
-#     Level 1 dispatcher: Routes messages to module controllers.
-#     """
-
-#     async def dispatch_action(
-#         self,
-#         ctx: "ActivityContextWrapper",
-#         payload: ActionPayload,
-#         container: "ServiceContainer"
-#     ) -> None:
-#         """
-#         Level 1: Routes action (button click) to appropriate module controller.
-#         """
-#         module = get_module_for_action(payload.action)
-#         if not module:
-#             await self._handle_unrouted_request(
-#                 ctx, 
-#                 f"⚠️ Unknown action '{payload.action}' - no module found in registry"
-#             )
-#             return
-
-#         controller = await self._resolve_controller(
-#             ctx,
-#             module,
-#             context_info=f"action: '{payload.action}'"
-#         )
-#         logger.info(f"🔄 Level 1: Routing ACTION '{payload.action}' to module '{module.value}'")
-#         await controller.handle_action(ctx, payload, container)
-
-#     async def dispatch_intent(
-#         self,
-#         ctx: "ActivityContextWrapper",
-#         user_intent: UserIntent,
-#         container: "ServiceContainer"
-#     ) -> None:
-#         """
-#         Level 1: Routes AI intent to appropriate module controller.
-#         """
-#         controller = await self._resolve_controller(
-#             ctx,
-#             user_intent.module,
-#             context_info=f"intent: '{user_intent.intent}'"
-#         )
-#         logger.info(f"🔄 Level 1: Routing INTENT '{user_intent.intent}' to module '{user_intent.module}'")
-#         await controller.handle_intent(ctx, user_intent, container)
-
-#     # =========================================================================
-#     # PRIVATE HELPERS
-#     # =========================================================================
-
-#     async def _handle_unrouted_request(self, ctx: "ActivityContextWrapper", log_message: str) -> None:
-#         """
-#         Centralized error handling for unroutable requests.
-#         Logs the warning and sends a localized user-friendly message.
-#         """
-#         logger.warning(log_message)
-        
-#         language = get_user_language(ctx)
-#         message = get_translation(TranslationKey.MESSAGE_UNHANDLED_REQUEST, language)
-        
-#         await ctx.send_activity(message)
-        
-#     async def _resolve_controller(
-#         self, 
-#         ctx: "ActivityContextWrapper",
-#         module: BotModule,
-#         context_info: str = ""
-#         ) -> Optional["ModuleController"]:
-#         """
-#         Attempts to find a controller for the module. 
-#         If missing, handles the error communication automatically.
-#         """
-#         controller = get_controller(module)
-#         if not controller:
-#             logger.error(f"❌ No controller found for module: {module}")
-#             await self._handle_unrouted_request(
-#                 ctx,
-#                 f"❌ No controller found for module: {module}. ({context_info})"
-#             )
-#             return None
-#         return controller

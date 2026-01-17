@@ -3,7 +3,7 @@ Book Meeting Action.
 Encapsulates logic for creating calendar events.
 """
 import logging
-from ..models import SchedulingResult, BookMeetingRequest, BookMeetingData
+from ..schemas import SchedulingResult, BookMeetingRequest, BookMeetingData
 
 logger = logging.getLogger("HRBot")
 

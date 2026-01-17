@@ -24,7 +24,7 @@ from .views import (
     create_daily_briefing_card,
     create_schedule_card,
 )
-from .models import TimeSlot, Participant, IntentContext, ActionContext
+from .schemas import TimeSlot, Participant, IntentContext, ActionContext
 from .mappers import SchedulingMapper
 from .service import SchedulingService
 from schemas.ai import UserIntent

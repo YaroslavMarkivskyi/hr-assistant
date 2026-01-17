@@ -8,7 +8,7 @@ import logging
 from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime, timedelta, timezone
 
-from ..models import TimelineSlot
+from ..schemas import TimelineSlot
 
 logger = logging.getLogger("HRBot")
 

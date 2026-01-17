@@ -2,7 +2,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from botbuilder.core import ConversationState, MemoryStorage
-from botbuilder.azure import BlobsStorage
+from botbuilder.azure import BlobStorage
 
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ def create_conversation_state(config: "Config") -> ConversationState:
     """
     if not config.DEBUG:
         try:
-            storage = BlobsStorage(
+            storage = BlobStorage(
                 container_name=config.AZURE_BLOB_CONTAINER_NAME,
                 connection_string=config.AZURE_BLOB_CONNECTION_STRING
             )

@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 
 from services.graph_service import GraphService
 from services.user_search import UserSearchService
-from utils.date_parser import parse_date
-from ..models import (
+from core.utils.date_parser import parse_date
+from ..schemas import (
     SchedulingResult, 
     Participant, 
     TimeSlot, 

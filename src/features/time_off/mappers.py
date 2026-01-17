@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from enums.prompts import PromptKeys
-from features.scheduling.models import IntentContext
+from features.scheduling.schemas import IntentContext
 from .schemas import (
     TimeOffExtractionParams, 
     LeaveRequestFormViewModel
@@ -62,7 +62,7 @@ from typing import Any, Dict, List
 
 from enums.prompts import PromptKeys
 from services.ai.service import AIService
-from features.scheduling.models import (
+from features.scheduling.schemas import (
     FindTimeRequest, 
     ViewScheduleRequest, 
     CancelMeetingRequest, 

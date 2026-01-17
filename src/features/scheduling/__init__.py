@@ -10,7 +10,7 @@ Package by Feature structure:
 Note: SchedulingController is imported lazily in container.py to avoid circular dependencies.
 """
 from .service import SchedulingService
-from .models import (
+from .schemas import (
     Participant,
     SchedulingResult,
     TimeSlot,

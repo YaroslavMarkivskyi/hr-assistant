@@ -43,7 +43,7 @@ class BotContainer:
         
         # Initialize conversation state
         # TODO: Pass storage from ServiceContainer if needed
-        conversation_state = create_conversation_state()
+        conversation_state = create_conversation_state(config=service_container.config)
         
         # Initialize bot with service container and conversation state
         bot = HRBotOrchestrator(service_container, conversation_state)

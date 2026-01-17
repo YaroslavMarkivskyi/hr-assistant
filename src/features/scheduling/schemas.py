@@ -6,11 +6,9 @@ Uses Pydantic for data validation and serialization.
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Any, Dict, List, Optional, Literal, Union, Generic, TypeVar
 from datetime import datetime
-from models.ai import AIResponse
-from models.action import ActionPayload
+from schemas.bot import ActionPayload
 from bot.activity_context_wrapper import ActivityContextWrapper
 from schemas.ai import UserIntent
-from core.containers.service_container import ServiceContainer
 
 T = TypeVar('T', bound=BaseModel)
 

@@ -12,7 +12,7 @@ from typing import List, Dict, Any
 import adaptive_cards.card as ac
 
 from enums.bot import SchedulingAction
-from .models import (
+from .schemas import (
     FindTimeViewModel, 
     ScheduleViewModel, 
     DailyBriefingViewModel, 

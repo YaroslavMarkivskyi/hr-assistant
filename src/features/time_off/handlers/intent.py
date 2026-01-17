@@ -7,7 +7,7 @@ from ..enums import LeaveRequestStatus
 
 # Services & Models
 from ..service import TimeOffService
-from features.scheduling.models import IntentContext
+from features.scheduling.schemas import IntentContext
 
 # Mapper & Views
 from ..mappers import TimeOffMapper

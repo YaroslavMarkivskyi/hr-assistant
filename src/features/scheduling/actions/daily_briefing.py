@@ -6,8 +6,8 @@ import logging
 from datetime import datetime, timedelta
 
 from services.graph_service import GraphService
-from utils.date_parser import parse_date
-from ..models import SchedulingResult, DailyBriefingRequest, DailyBriefingData
+from core.utils.date_parser import parse_date
+from ..schemas import SchedulingResult, DailyBriefingRequest, DailyBriefingData
 
 logger = logging.getLogger("HRBot")
 

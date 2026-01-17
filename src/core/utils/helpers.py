@@ -2,7 +2,7 @@
 Common helper functions
 """
 from microsoft.teams.apps import ActivityContext
-from enums.languages import Language
+from core.enums.languages import Language
 
 
 def get_user_language(ctx: ActivityContext) -> Language:

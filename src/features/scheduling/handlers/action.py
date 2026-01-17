@@ -5,7 +5,7 @@ from datetime import datetime
 
 from enums.bot import SchedulingAction, BotAction
 from features.scheduling.service import SchedulingService
-from ..models import ActionContext, BookSlotContext, BookingConfirmationViewModel
+from ..schemas import ActionContext, BookSlotContext, BookingConfirmationViewModel
 from ..views import create_booking_confirmation_card
 
 

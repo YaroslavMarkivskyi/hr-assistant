@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 from services.graph_service import GraphService
 from services.user_search import UserSearchService
-from .models import (
+from .schemas import (
     SchedulingResult, 
     Participant,
     FindTimeRequest,

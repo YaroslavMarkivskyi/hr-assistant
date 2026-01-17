@@ -1,6 +1,6 @@
 import logging
 from services.graph_service import GraphService
-from ..models import SchedulingResult, CancelMeetingRequest, CancelMeetingData
+from ..schemas import SchedulingResult, CancelMeetingRequest, CancelMeetingData
 
 logger = logging.getLogger("HRBot")
 

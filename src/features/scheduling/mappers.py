@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 
 from enums.prompts import PromptKeys
 from services.ai.service import AIService
-from features.scheduling.models import (
+from features.scheduling.schemas import (
     FindTimeRequest, 
     ViewScheduleRequest, 
     CancelMeetingRequest, 

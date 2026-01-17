@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from enums.bot import BotModule, GeneralIntent, get_module_for_intent
+from core.enums.bot import BotModule, GeneralIntent, get_module_for_intent
 
 
 class AIResponse(BaseModel):
@@ -109,4 +109,8 @@ class AIResponse(BaseModel):
 
         return self
 
+
+__all__ = (
+    "AIResponse",
+)
 

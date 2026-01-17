@@ -2,11 +2,10 @@
 Translation resources for bot localization
 """
 from typing import Dict, Union
-from enums.languages import Language
-from enums.bot import BotModule, BotIntent, AnyIntent
-from enums.bot_capability import BotCapability
-from enums.bot import BotAction
-from enums.translation_key import TranslationKey
+from core.enums.languages import Language
+from core.enums.bot import BotModule, BotIntent
+from core.enums.bot import BotAction
+from core.enums.translation_key import TranslationKey
 
 
 # Translation dictionaries
@@ -267,30 +266,12 @@ def get_module_name(module: BotModule, language: Language = Language.ENGLISH, **
     return get_translation(key, language, **kwargs)
 
 
-def get_capability_name(capability: BotCapability, language: Language = Language.ENGLISH, **kwargs) -> str:
-    """
-    Gets the translated name for a BotCapability
-    
-    Args:
-        capability: BotCapability enum value (can be None)
-        language: Target language
-        **kwargs: Optional variables to format into the translation string
-        
-    Returns:
-        Translated capability name, or empty string if capability is None
-    """
-    if capability is None:
-        return ""
-    key = f"capability.{capability.value}"
-    return get_translation(key, language, **kwargs)
-
-
-def get_intent_name(intent: AnyIntent, language: Language = Language.ENGLISH, **kwargs) -> str:
+def get_intent_name(intent: BotIntent, language: Language = Language.ENGLISH, **kwargs) -> str:
     """
     Gets the translated name for an intent
     
     Args:
-        intent: AnyIntent enum value (can be None)
+        intent: BotIntent enum value (can be None)
         language: Target language
         **kwargs: Optional variables to format into the translation string
         

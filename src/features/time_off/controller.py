@@ -12,7 +12,7 @@ from models.action import ActionPayload
 from schemas.ai import UserIntent
 
 from enums.bot.intents import TimeOffIntent
-from features.scheduling.models import IntentContext, ActionContext
+from features.scheduling.schemas import IntentContext, ActionContext
 from .service import TimeOffService
 from .handlers import TimeOffIntentHandler, TimeOffActionHandler
 

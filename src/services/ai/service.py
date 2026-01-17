@@ -9,7 +9,7 @@ from pydantic_ai.models import Model
 from core.config import Config
 from .factory import AIModelFactory
 from schemas.ai import UserIntent
-from enums.prompts import PromptKeys
+from core.enums.prompts import PromptKeys
 
 logger = logging.getLogger(__name__)
 

@@ -17,10 +17,10 @@ from db.base import Base
 
 # Імпорт моделей
 from db.models import EmployeeModel
-from features.timeoff.models import LeaveRequestModel, TimeOffSettingsModel
+from features.time_off.models import LeaveRequestModel, TimeOffSettingsModel
 
 # Імпорт Enums з бази (використовуємо alias, щоб не плутати з Pydantic)
-from features.timeoff.enums import LeaveType as DbLeaveType, LeaveRequestStatus as DbLeaveRequestStatus
+from features.time_off.enums import LeaveType as DbLeaveType, LeaveRequestStatus as DbLeaveRequestStatus
 
 class DatabaseService:
     """

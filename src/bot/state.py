@@ -18,6 +18,6 @@ def create_conversation_state() -> ConversationState:
     """
     memory = MemoryStorage()
     conversation_state = ConversationState(memory)
-    logger.info("✅ ConversationState initialized")
+    logger.info("ConversationState initialized")
     return conversation_state
 

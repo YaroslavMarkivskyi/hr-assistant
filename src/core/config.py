@@ -10,7 +10,8 @@ from typing import Optional
 from pathlib import Path
 from pydantic import Field, AliasChoices, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from enums.ai import AIProvider
+from core.enums.ai import AIProvider
+
 
 logger = logging.getLogger(__name__)
 

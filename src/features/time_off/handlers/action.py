@@ -2,9 +2,9 @@ import logging
 from typing import Any
 
 from enums.bot import BotModule
-from features.timeoff.enums import TimeOffAction, LeaveType
-from features.timeoff.service import TimeOffService
-from features.timeoff.schemas import SubmitLeaveActionPayload
+from features.time_off.enums import TimeOffAction, LeaveType
+from features.time_off.service import TimeOffService
+from features.time_off.schemas import SubmitLeaveActionPayload
 from features.scheduling.models import ActionContext # Використовуємо загальний контекст
 
 logger = logging.getLogger("HRBot")

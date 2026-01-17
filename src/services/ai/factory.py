@@ -5,7 +5,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 
 from core.config import Config
-from enums.ai import AIProvider
+from core.enums.ai import AIProvider
 
 
 logger = logging.getLogger(__name__)

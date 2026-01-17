@@ -70,7 +70,7 @@ class HRBot:
             await router.route()
             
         except Exception as e:
-            logger.error(f"❌ Error in HRBot.on_turn: {e}", exc_info=True)
+            logger.error(f"Error in HRBot.on_turn: {e}", exc_info=True)
             
             # Send localized error message to user
             if turn_context.activity.type == ActivityTypes.message:
@@ -89,5 +89,5 @@ class HRBot:
             try:
                 await self.conversation_state.save_changes(turn_context)
             except Exception as save_error:
-                logger.error(f"❌ Failed to save state: {save_error}", exc_info=True)
+                logger.error(f"Failed to save state: {save_error}", exc_info=True)
 

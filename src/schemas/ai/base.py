@@ -1,7 +1,7 @@
 from typing import List, Optional, Literal
 from pydantic import BaseModel, Field
 
-from enums.bot import BotModule, BotIntent
+from core.enums.bot import BotModule, BotIntent
 
 
 class UserIntent(BaseModel):

@@ -6,15 +6,21 @@ Isolates authentication and connection logic from business logic.
 """
 import sys
 import logging
+from typing import TYPE_CHECKING
+
 from botbuilder.core import (
     BotFrameworkAdapter,
     BotFrameworkAdapterSettings,
     TurnContext,
 )
 from botframework.connector.auth import AuthenticationConfiguration
-from core.config import settings
 
 logger = logging.getLogger("HRBot")
+
+
+if TYPE_CHECKING:
+    from core.config import Config
+
 
 
 def _clean_config_value(value: str) -> str:
@@ -22,7 +28,7 @@ def _clean_config_value(value: str) -> str:
     return str(value).strip().strip('"').strip("'")
 
 
-def create_adapter() -> BotFrameworkAdapter:
+def create_adapter(config: "Config") -> BotFrameworkAdapter:
     """
     Create and configure BotFrameworkAdapter with Single Tenant support.
     
@@ -39,12 +45,12 @@ def create_adapter() -> BotFrameworkAdapter:
         SystemExit: If adapter initialization fails
     """
     # Clean configuration values
-    clean_app_id = _clean_config_value(settings.APP_ID)
-    clean_password = _clean_config_value(settings.APP_PASSWORD)
-    clean_tenant_id = _clean_config_value(settings.TENANT_ID)
+    clean_app_id = _clean_config_value(config.APP_ID)
+    clean_password = _clean_config_value(config.APP_PASSWORD)
+    clean_tenant_id = _clean_config_value(config.TENANT_ID)
     
-    logger.info(f"🔑 BOT_ID: {clean_app_id}")
-    logger.info(f"🏢 TENANT_ID: {clean_tenant_id}")
+    logger.info(f"BOT_ID: {clean_app_id}")
+    logger.info(f"TENANT_ID: {clean_tenant_id}")
     
     try:
         # Authentication configuration for validating INCOMING tokens
@@ -68,14 +74,14 @@ def create_adapter() -> BotFrameworkAdapter:
         
         # Set up error handler
         async def on_error(context: TurnContext, error: Exception):
-            logger.error(f"❌ Bot Error: {error}", exc_info=True)
+            logger.error(f"Bot Error: {error}", exc_info=True)
         
         adapter.on_turn_error = on_error
         
-        logger.info("✅ BotFrameworkAdapter initialized with channel_auth_tenant")
+        logger.info("BotFrameworkAdapter initialized with channel_auth_tenant")
         return adapter
         
     except Exception as e:
-        logger.error(f"❌ Critical Adapter Init Error: {e}", exc_info=True)
+        logger.error(f"Critical Adapter Init Error: {e}", exc_info=True)
         sys.exit(1)
 

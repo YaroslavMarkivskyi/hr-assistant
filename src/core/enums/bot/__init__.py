@@ -1,4 +1,5 @@
 from .bot_module import BotModule
+from .bot_request_type import BotRequestType
 
 from .actions import (
     SchedulingAction,
@@ -24,6 +25,7 @@ from .registry import (
 
 __all__ = (
     "BotModule",
+    "BotRequestType",
     
     "SchedulingAction",
     "TimeOffAction",

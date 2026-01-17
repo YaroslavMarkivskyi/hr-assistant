@@ -4,7 +4,7 @@ from botbuilder.core import BotFrameworkAdapter, ConversationState
 
 from bot.adapter import create_adapter
 from bot.state import create_conversation_state
-from bot.orchestrator import HRBot
+from bot.orchestrator import HRBotOrchestrator
 from core.containers.service_container import ServiceContainer
 
 
@@ -18,7 +18,7 @@ class BotContainer:
     """
     adapter: BotFrameworkAdapter
     conversation_state: ConversationState
-    bot: HRBot
+    bot: HRBotOrchestrator
     
     @classmethod
     def create(cls, service_container: ServiceContainer) -> 'BotContainer':
@@ -46,7 +46,7 @@ class BotContainer:
         conversation_state = create_conversation_state()
         
         # Initialize bot with service container and conversation state
-        bot = HRBot(service_container, conversation_state)
+        bot = HRBotOrchestrator(service_container, conversation_state)
         
         logger.info("BotContainer initialized")
         

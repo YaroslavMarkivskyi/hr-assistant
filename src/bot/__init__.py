@@ -2,7 +2,7 @@
 Bot module - core bot logic and infrastructure
 """
 from .adapter import create_adapter
-from .logic import HRBot
+from .orchestrator import HRBot
 from .state import create_conversation_state
 from .router import MessageRouter
 

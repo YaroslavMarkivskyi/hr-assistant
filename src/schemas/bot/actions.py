@@ -1,17 +1,9 @@
-"""
-Action payload model for Adaptive Card button clicks.
-
-This module defines a strict contract for button payloads coming from Teams.
-It uses Pydantic for validation to avoid guessing payload structure
-and to ensure the action is a valid BotAction.
-"""
-from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from enums.bot import BotAction
-from enums.bot.registry import get_action_enum
+from core.enums.bot import BotAction
+from core.enums.bot.registry import get_action_enum
 
 
 

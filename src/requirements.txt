@@ -3,6 +3,7 @@ botbuilder-core>=4.17.0
 botbuilder-schema>=4.15.0
 botbuilder-integration-aiohttp>=4.15.0
 botframework-connector>=4.15.0
+botbuilder-azure
 
 # --- Azure & Auth ---
 azure-identity>=1.14.0
@@ -35,7 +36,6 @@ microsoft-teams-apps>=2.0.0a8
 # Note: Only alpha versions available
 microsoft-teams-ai>=2.0.0a8
 microsoft-teams-openai>=2.0.0a8
-
 # --- AI Services ---
 openai>=2.14.0
 

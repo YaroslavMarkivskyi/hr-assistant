@@ -157,6 +157,7 @@ class AppConfig(BaseSettings):
     PROJECT_VERSION: str = Field(default="1.0.0")
     PORT: int = Field(default=3978)
     DEFAULT_LICENSE_SKU_ID: str = Field(default="")
+    DEBUG: bool = Field(default=True)
     
     model_config = SettingsConfigDict(
         env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
@@ -170,6 +171,19 @@ class DevConfig(BaseSettings):
     
     TEST_USER_ID: Optional[str] = None
     DEFAULT_APPROVER: Optional[str] = None
+    
+    model_config = SettingsConfigDict(
+        env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
+        env_ignore_empty=True,
+        extra="ignore"
+    )
+
+
+class AzureBlobConfig(BaseSettings):
+    """Azure Blob Storage configuration"""
+    
+    AZURE_BLOB_CONNECTION_STRING: Optional[SecretStr] = None
+    AZURE_BLOB_CONTAINER_NAME: Optional[str] = None
     
     model_config = SettingsConfigDict(
         env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
@@ -193,8 +207,18 @@ class Config:
         self.database = DatabaseConfig()
         self.app = AppConfig()
         self.dev = DevConfig()
-    
+        self.azure_blob = AzureBlobConfig()
     # --- Backward Compatibility Properties ---
+    
+    @property
+    def AZURE_BLOB_CONNECTION_STRING(self) -> Optional[str]:
+        if self.azure_blob.AZURE_BLOB_CONNECTION_STRING:
+            return self.azure_blob.AZURE_BLOB_CONNECTION_STRING.get_secret_value()
+        return None
+    
+    @property
+    def AZURE_BLOB_CONTAINER_NAME(self) -> Optional[str]:
+        return self.azure_blob.AZURE_BLOB_CONTAINER_NAME
     
     @property
     def APP_ID(self) -> str:
@@ -304,6 +328,11 @@ class Config:
     def PROJECT_DESCRIPTION(self) -> str:
         """Project Description (backward compatibility)"""
         return self.app.PROJECT_DESCRIPTION
+
+    @property
+    def DEBUG(self) -> bool:
+        """Debug Mode (backward compatibility)"""
+        return self.app.DEBUG
 
 # --- Singleton Instance ---
 settings = Config()

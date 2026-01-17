@@ -9,7 +9,7 @@ from core.enums.translation_key import TranslationKey
 
 from bot.activity_context_wrapper import ActivityContextWrapper
 
-from utils.helpers import get_user_language
+from core.utils.helpers import get_user_language
 from resources import get_translation
 
 

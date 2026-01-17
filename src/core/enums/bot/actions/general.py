@@ -7,6 +7,7 @@ class GeneralAction(StrEnum):
     GO_BACK = "go_back"
     CANCEL_OPERATION = "cancel_operation"
     Provide_Feedback = "provide_feedback"
+    UNKNOWN = "unknown"
     
 
 __all__ = ("GeneralAction",)

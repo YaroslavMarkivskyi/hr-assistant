@@ -26,6 +26,14 @@ class IntentPayload(BaseModel):
         None,
         description="Detected language of the user message"
     )
+    original_text: str = Field(
+        ...,
+        description="Original user message text that led to this intent"
+    )
+    entities: Optional[dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Optional extracted entities relevant to the intent"
+    )
     
     @field_validator("intent", mode="before")
     @classmethod

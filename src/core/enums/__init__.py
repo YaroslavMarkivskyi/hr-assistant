@@ -13,13 +13,11 @@ Usage:
 """
 # Import bot as a module (not re-exporting individual items)
 from . import bot
-from .bot_capability import BotCapability
 from .languages import Language
 from .translation_key import TranslationKey
 
 __all__ = [
     'bot',  # Main bot module (contains BotModule, BotIntent, BotAction, etc.)
-    'BotCapability',
     'Language',
     'TranslationKey',
 ]

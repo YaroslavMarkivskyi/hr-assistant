@@ -18,7 +18,7 @@ class ActionPayload(BaseModel):
         description="Action to perform, must be valid BotAction enum value"
         )
     # TODO: Change Any to Other strict type if needed
-    context: Optional[Dict[str, Any]] = Field(
+    data: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Optional contextual data for the action (card-specific payload)",
     )

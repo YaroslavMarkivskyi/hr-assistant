@@ -13,10 +13,10 @@ class PromptKeys(StrEnum):
     SCHEDULING_UPDATE = f"{BotModule.SCHEDULING}/update"
     
     # Time Off module prompts
-    TIMEOFF_EXTRACT = f"{BotModule.TIME_OFF}/extract"
-    TIMEOFF_VIEW = f"{BotModule.TIME_OFF}/view"
-    TIMEOFF_CANCEL = f"{BotModule.TIME_OFF}/cancel"
-    TIMEOFF_REQUEST = f"{BotModule.TIME_OFF}/request"
+    TIME_OFF_EXTRACT = f"{BotModule.TIME_OFF}/extract"
+    TIME_OFF_VIEW = f"{BotModule.TIME_OFF}/view"
+    TIME_OFF_CANCEL = f"{BotModule.TIME_OFF}/cancel"
+    TIME_OFF_REQUEST = f"{BotModule.TIME_OFF}/request"
     
     
 __all__ = [

@@ -1,18 +1,28 @@
+import logging
+
 from azure.communication.email.aio import EmailClient
 from typing import Dict, Any
+
+
+logger = logging.getLogger(__name__)
+
 
 class EmailService:
     def __init__(self, config):
         self.connection_string = config.COMMUNICATION_CONNECTION_STRING
         self.sender_address = config.MAIL_FROM_ADDRESS
 
-    async def send_welcome_email(self, to_email: str, candidate_name: str, login: str, password: str) -> Dict[str, Any]:
-        """Відправляє вітальний лист з доступами"""
-        
-        # Перевірка налаштувань
+    async def send_welcome_email(
+        self, 
+        to_email: str, 
+        candidate_name: str, 
+        login: str, 
+        password: str
+        ) -> Dict[str, Any]:
         if not self.connection_string:
-            error_msg = "COMMUNICATION_CONNECTION_STRING не налаштовано"
-            print(f"❌ {error_msg}")
+            # TODO: Add localization later
+            error_msg = "COMMUNICATION_CONNECTION_STRING does not set"
+            
             return {"success": False, "error": error_msg}
         
         if not self.sender_address:

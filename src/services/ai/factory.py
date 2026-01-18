@@ -19,7 +19,7 @@ class AIModelFactory:
     
     @classmethod
     def create_model(cls, config: Config) -> Model:        
-        logger.info(f"🏭 AI Factory: Initializing {config.AI_PROVIDER} with model '{config.AI_MODEL_NAME}'")
+        logger.info(f"AI Factory: Initializing {config.AI_PROVIDER} with model '{config.AI_MODEL_NAME}'")
         
         builder = cls._get_builders().get(config.AI_PROVIDER)
         
@@ -81,7 +81,6 @@ class AIModelFactory:
         return {
             AIProvider.OPENAI: cls._build_openai_model,
             AIProvider.AZURE: cls._build_azure_model,
-            # AIProvider.ANTHROPIC: cls._build_anthropic_model,
         }
         
 

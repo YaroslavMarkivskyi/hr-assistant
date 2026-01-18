@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional, TypeVar, Type, Any, Dict
+from typing import Optional, TypeVar, Type, Dict
 
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -48,13 +48,13 @@ class AIService:
                 system_prompt=system_prompt,
                 retries=self._config.AI_MAX_RETRIES
             )
-            logger.info(f"🤖 AI Service: Extracting data with prompt '{prompt_key}'")
+            logger.info(f"AI Service: Extracting data with prompt '{prompt_key}'")
             
             result = await agent.run(user_text)
-            logger.info(f"🧠 AI Service: Extraction result - {result.output}")
+            logger.info(f"AI Service: Extraction result - {result.output}")
             return result.output
         except Exception as e:
-            logger.error(f"❌ AI Service: Data extraction failed - {e}", exc_info=True)
+            logger.error(f"AI Service: Data extraction failed - {e}", exc_info=True)
             return result_type.model_construct()
         
     async def chat(
@@ -74,12 +74,12 @@ class AIService:
                 system_prompt=system_prompt,
                 retries=self._config.AI_MAX_RETRIES
             )
-            logger.info(f"🤖 AI Service: Generating chat response with prompt '{prompt_key}'")
+            logger.info(f"AI Service: Generating chat response with prompt '{prompt_key}'")
             
             result = await agent.run(user_text)
             return result.data
         except Exception as e:
-            logger.error(f"❌ AI Service: Chat generation failed - {e}", exc_info=True)
+            logger.error(f"AI Service: Chat generation failed - {e}", exc_info=True)
             return "I'm sorry, I couldn't process your request at the moment."
 
     async def detect_intent(
@@ -122,7 +122,7 @@ class AIService:
                 self._prompts_cache[prompt_key] = prompt_text
                 return prompt_text    
         except FileNotFoundError:
-            logger.error(f"❌ AI Service: Prompt file '{filename}' not found.")
+            logger.error(f"AI Service: Prompt file '{filename}' not found.")
             return "You are a helpful AI assistant."
         
 

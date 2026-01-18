@@ -6,8 +6,6 @@ from botbuilder.schema import ActivityTypes
 
 from core.enums.bot import (
     BotRequestType, 
-    BotAction, 
-    BotIntent, 
     get_action_enum_instance,
     get_intent_enum_instance,
     ACTION_UNKNOWN,

@@ -23,6 +23,11 @@ from .registry import (
 )
 
 
+INTENT_UNKNOWN = GeneralIntent.UNKNOWN
+ACTION_UNKNOWN = GeneralAction.UNKNOWN
+
+
+
 __all__ = (
     "BotModule",
     "BotRequestType",
@@ -41,5 +46,8 @@ __all__ = (
     "get_action_enum_instance",
     "get_module_for_intent",
     "get_intent_enum_instance",
+    
+    "INTENT_UNKNOWN",
+    "ACTION_UNKNOWN",
 )
 

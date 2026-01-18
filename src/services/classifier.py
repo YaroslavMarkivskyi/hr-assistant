@@ -9,7 +9,9 @@ from core.enums.bot import (
     BotAction, 
     BotIntent, 
     get_action_enum_instance,
-    get_intent_enum_instance
+    get_intent_enum_instance,
+    ACTION_UNKNOWN,
+    INTENT_UNKNOWN,
 )
 from core.extraction_registry import EXTRACTOR_REGISTRY
 
@@ -37,7 +39,7 @@ class RequestClassifier:
         return ClassifiedRequest(
             request_type=BotRequestType.INTENT,
             payload=IntentPayload(
-                intent=BotIntent.UNKNOWN,
+                intent=INTENT_UNKNOWN,
                 confidence=0.0,
                 original_text=""
             )
@@ -46,10 +48,9 @@ class RequestClassifier:
     async def _classify_action(self, value: Any) -> ClassifiedRequest:
         action_name = value.get("action")
         data = value.get("data", {})
+        action_enum = get_action_enum_instance(str(action_name)) or ACTION_UNKNOWN
         
-        action_enum = get_action_enum_instance(str(action_name)) or BotAction.UNKNOWN
-        
-        if action_enum == BotAction.UNKNOWN:
+        if action_enum == ACTION_UNKNOWN:
             logger.warning(f"Received unknown action: {action_name}")
         
         payload = ActionPayload(
@@ -69,9 +70,9 @@ class RequestClassifier:
             context=None,
         )
         
-        bot_intent = get_intent_enum_instance(user_intent.intent) or BotIntent.UNKNOWN
+        bot_intent = get_intent_enum_instance(user_intent.intent) or INTENT_UNKNOWN
         
-        if bot_intent == BotIntent.UNKNOWN:
+        if bot_intent == INTENT_UNKNOWN:
             logger.warning(f"Received unknown intent: {user_intent.intent}")
         
         entities_data = {}

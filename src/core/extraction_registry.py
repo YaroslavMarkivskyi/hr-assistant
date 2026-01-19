@@ -1,11 +1,12 @@
 from typing import Dict, Type
-
 from dataclasses import dataclass
 
-from core.enums.prompts import PromptKeys
 from pydantic import BaseModel
 
-from core.enums.bot import BotIntent
+from core.enums.prompts import PromptKeys
+from core.enums.bot import BotIntent, SchedulingIntent
+
+from schemas.ai.scheduling import ScheduleQueryEntities
 
 
 @dataclass
@@ -28,7 +29,10 @@ EXTRACTOR_REGISTRY: Dict[BotIntent, ExtractionConfig] = {
 """
 
 EXTRACTOR_REGISTRY: Dict[BotIntent, ExtractionConfig] = {
-    
+    SchedulingIntent.FIND_TIME: ExtractionConfig(
+        schema=ScheduleQueryEntities,
+        prompt_key=PromptKeys.SCHEDULING_EXTRACT
+    ),
 }
 
 __all__ = (

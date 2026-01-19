@@ -85,6 +85,7 @@ class RequestClassifier:
                 prompt_key=config.prompt_key,
                 context=None
             )
+            logger.info(f"Extracted data: {extracted_data}")
 
             entities_data = extracted_data.model_dump(exclude_unset=True)
             

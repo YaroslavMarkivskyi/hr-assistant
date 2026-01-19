@@ -8,8 +8,8 @@ It does NOT know about bot context or UI (Adaptive Cards).
 It accepts pure data (strings, dates) and returns model objects.
 """
 import logging
-from typing import Dict, Any, List, Optional, Union
-from datetime import datetime, timedelta
+from typing import List, Optional, Union
+from datetime import datetime
 
 from services.graph_service import GraphService
 from services.user_search import UserSearchService

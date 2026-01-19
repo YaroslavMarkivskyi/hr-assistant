@@ -24,7 +24,7 @@ from .mappers import SchedulingMapper
 
 if TYPE_CHECKING:
     from core.containers.service_container import ServiceContainer
-    from .services import SchedulingService
+    from .service import SchedulingService
     from bot.activity_context_wrapper import ActivityContextWrapper
 
 

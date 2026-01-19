@@ -48,7 +48,6 @@ class ServiceContainer:
         Factory method to create a service container with initialized services.
         """
         # Initialize core services
-        from .feature_registry import initialize_features
         logger.info("Initializing core services...")
         
         # Base services
@@ -67,7 +66,6 @@ class ServiceContainer:
             graph_service=graph,
             ai_service=ai
         )
-        features = initialize_features(config)
         container = cls(
             config=config,
             db=db,
@@ -78,8 +76,13 @@ class ServiceContainer:
             user_search=user_search,
             classifier=classifier,
             dispatcher=dispatcher,
-            features=features,
+            features={},
         )
+
+        from .feature_registry import initialize_features
+        features = initialize_features(container)
+        container.features = features
+        
         
         return container
         

@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 
 import adaptive_cards.card as ac
 
-from enums.bot import SchedulingAction
+from core.enums.bot import SchedulingAction
 from .schemas import (
     FindTimeViewModel, 
     ScheduleViewModel, 

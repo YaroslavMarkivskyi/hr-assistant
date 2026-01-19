@@ -9,10 +9,10 @@ Provides common functionality for all module controllers:
 import logging
 from typing import Optional, TYPE_CHECKING, TypeVar, Generic
 
-from enums.translation_key import TranslationKey
+from core.enums.translation_key import TranslationKey
 from handlers.utils import get_requester_id
 from resources import get_translation
-from utils.helpers import get_user_language
+from core.utils.helpers import get_user_language
 
 if TYPE_CHECKING:
     from bot.activity_context_wrapper import ActivityContextWrapper

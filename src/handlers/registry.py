@@ -5,9 +5,9 @@ Supports Dependency Injection by separating class registration from instantiatio
 """
 from typing import Dict, Protocol, Type, Optional, TYPE_CHECKING
 import logging
-from enums.bot import BotModule
-from models.action import ActionPayload
-from models.ai import AIResponse
+from core.enums.bot import BotModule
+from schemas.bot import ActionPayload
+from schemas.ai.response import AIResponse
 
 if TYPE_CHECKING:
     from bot.activity_context_wrapper import ActivityContextWrapper

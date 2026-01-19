@@ -1,8 +1,6 @@
 import logging
-from typing import Any, Dict, List
 
-from enums.prompts import PromptKeys
-from services.ai.service import AIService
+from core.enums.prompts import PromptKeys
 from features.scheduling.schemas import (
     FindTimeRequest, 
     ViewScheduleRequest, 
@@ -45,13 +43,13 @@ class SchedulingMapper:
             context=context_str
         )
         
-        logger.info(f"🧠 [Mapper] Extracted FindTime entities: {entities}")
+        logger.info(f"[Mapper] Extracted FindTime entities: {entities}")
 
         # 2. Mapping to DTO
         return FindTimeRequest(
             requester_id=ctx.requester_id,
             subject=entities.subject or "Meeting",
-            participant_names=entities.participants, # Це вже чистий List[str]!
+            participant_names=entities.participants,
             duration_minutes=entities.duration_minutes or 30,
             start_date=entities.date,
             time_preference=entities.specific_time or entities.day_part

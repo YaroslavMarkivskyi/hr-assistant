@@ -3,7 +3,7 @@ import logging
 from typing import Dict, Any, Callable
 from datetime import datetime
 
-from enums.bot import SchedulingAction, BotAction
+from core.enums.bot import SchedulingAction, BotAction
 from features.scheduling.service import SchedulingService
 from ..schemas import ActionContext, BookSlotContext, BookingConfirmationViewModel
 from ..views import create_booking_confirmation_card

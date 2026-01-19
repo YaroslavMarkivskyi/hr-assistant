@@ -1,10 +1,10 @@
-
+from __future__ import annotations
 import logging
+from typing import TYPE_CHECKING
 
 from botbuilder.core import TurnContext, ConversationState
 from botbuilder.schema import ActivityTypes
 
-from core.containers.service_container import ServiceContainer
 from core.enums.translation_key import TranslationKey
 
 from bot.activity_context_wrapper import ActivityContextWrapper
@@ -15,6 +15,9 @@ from resources import get_translation
 
 logger = logging.getLogger(__name__)
 
+
+if TYPE_CHECKING:
+    from core.containers.service_container import ServiceContainer
 
 class HRBotOrchestrator:
     def __init__(

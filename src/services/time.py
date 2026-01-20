@@ -3,10 +3,6 @@ from datetime import datetime
 import pytz
 
 class TimeService:
-    """
-    Service for handling time-related operations.
-    Using UTC internally is a best practice.
-    """
     def __init__(self):
         # TODO make timezone configurable
         self.default_timezone = pytz.timezone('Europe/Kiev')
@@ -18,3 +14,13 @@ class TimeService:
     def now_utc(self) -> datetime:
         """Returns current time in UTC."""
         return datetime.now(pytz.utc)
+    
+    def timestamp(self) -> float:
+        """Returns current timestamp in seconds."""
+        return datetime.now(pytz.utc).timestamp()
+
+
+__all__ = (
+    'TimeService',
+)
+

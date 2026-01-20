@@ -53,9 +53,9 @@ class ServiceContainer:
         # Base services
         db = DatabaseService(db_path=config.DB_PATH)
         ai = AIService(config)
-        graph = GraphService(config)
-        email = EmailService(config)
         time = TimeService()
+        graph = GraphService(config=config, time_service=time)
+        email = EmailService(config)
         
         # System services
         classifier = RequestClassifier(ai_service=ai)

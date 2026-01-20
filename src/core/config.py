@@ -44,6 +44,15 @@ class AzureBotConfig(BaseSettings):
         default="",
         validation_alias=AliasChoices("TEAMS_APP_TENANT_ID", "MicrosoftAppTenantId", "TENANT_ID")
     )
+    GRAPH_DOMAIN: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("GRAPH_DOMAIN"),
+        description="Custom domain for Microsoft Graph (e.g., example.onmicrosoft.com)"
+    )
+    GRAPH_API_BASE_URL: str = Field(
+        default="https://graph.microsoft.com/v1.0",
+        description="Base URL for Microsoft Graph API"
+    )
     
     model_config = SettingsConfigDict(
         env_file=[ENV_DIR / ".env", ENV_DIR / ".env.local"],
@@ -333,7 +342,17 @@ class Config:
     def DEBUG(self) -> bool:
         """Debug Mode (backward compatibility)"""
         return self.app.DEBUG
+    
+    @property
+    def GRAPH_DOMAIN(self) -> Optional[str]:
+        """Graph Domain (backward compatibility)"""
+        return self.azure_bot.APP_TYPE
 
+    @property
+    def GRAPH_API_BASE_URL(self) -> str:
+        """Graph API Base URL (backward compatibility)"""
+        return self.azure_bot.GRAPH_API_BASE_URL
+    
 # --- Singleton Instance ---
 settings = Config()
 

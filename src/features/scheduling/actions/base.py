@@ -50,14 +50,14 @@ class BaseSchedulingAction(ABC, Generic[TRequest, TResponse]):
             if result.success:
                 logger.info(f"Action {action_name} completed successfully.")
             else:
-                logger.warning(f"Action {action_name} failed with error: {result.error_message}")
+                logger.warning(f"Action {action_name} failed with error: {result.error}")
             
             return result
         except Exception as e:
             logger.error(f"Exception during action {action_name}: {e}", exc_info=True)
             return response_schemas.SchedulingResult(
                 success=False,
-                error_message=str(e),
+                error=str(e),
             )
     
     @abstractmethod

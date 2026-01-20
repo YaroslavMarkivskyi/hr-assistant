@@ -28,7 +28,6 @@ class BaseSchedulingAction(ABC, Generic[TRequest, TResponse]):
     def __init__(self, graph_service: GraphService):
         self._graph_service = graph_service
 
-    @abstractmethod
     async def execute(
         self, 
         request: TRequest

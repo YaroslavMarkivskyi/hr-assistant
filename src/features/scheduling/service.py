@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from services.graph_service import GraphService
     from services.user_search import UserSearchService
     from .actions import BaseSchedulingAction
-    from .schemas.requests import SchedulingRequest
-    from .schemas.responses import SchedulingResult
     
 
 logger = logging.getLogger(__name__)
@@ -65,11 +63,16 @@ class SchedulingService:
             ]:
         if action_name not in self._action_instances:
             action_class = self._action_classes[action_name]
-            if action_name in ("find_time", "view"):
+            if action_name == "view":
                 instance = action_class(
                     self._graph_service,
                     self._user_search_service,
-                    self._timeline_builder if action_name == "view" else None
+                    self._timeline_builder
+                )
+            elif action_name == "find_time":
+                instance = action_class(
+                    self._graph_service,
+                    self._user_search_service
                 )
             else:
                 instance = action_class(self._graph_service)

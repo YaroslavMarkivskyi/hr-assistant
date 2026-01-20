@@ -1,13 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Union
 from datetime import datetime
 
 from schemas.shared import Participant
 
 
-class FindTimeRequest(BaseModel):
-    """Request model for finding meeting times"""
+class BaseSchedulingRequest(BaseModel):
+    """Base class for scheduling requests"""
     requester_id: str
+    
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True
+        )
+
+
+class FindTimeRequest(BaseSchedulingRequest):
+    """Request model for finding meeting times"""
     participant_names: List[str]
     subject: str = "Meeting"
     duration_minutes: int = 30
@@ -15,9 +24,8 @@ class FindTimeRequest(BaseModel):
     end_date: Optional[Union[str, datetime]] = None
     
 
-class BookMeetingRequest(BaseModel):
+class BookMeetingRequest(BaseSchedulingRequest):
     """Request model for booking a meeting"""
-    requester_id: str
     subject: str
     participants: List[Participant]
     start_time: datetime
@@ -25,23 +33,20 @@ class BookMeetingRequest(BaseModel):
     agenda: Optional[str] = None
 
 
-class ViewScheduleRequest(BaseModel):
+class ViewScheduleRequest(BaseSchedulingRequest):
     """Request model for viewing schedule"""
-    requester_id: str
     employee_id: Optional[str] = None
     employee_name: Optional[str] = None
     date: Optional[Union[str, datetime]] = None
     detailed: bool = False
 
-class DailyBriefingRequest(BaseModel):
+class DailyBriefingRequest(BaseSchedulingRequest):
     """Request model for daily briefing"""
-    requester_id: str
     date: Optional[Union[str, datetime]] = None
 
 
-class UpdateMeetingRequest(BaseModel):
+class UpdateMeetingRequest(BaseSchedulingRequest):
     """Request model for updating a meeting"""
-    requester_id: str
     meeting_id: str
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
@@ -49,16 +54,14 @@ class UpdateMeetingRequest(BaseModel):
     participants: Optional[List[Participant]] = None
 
 
-class CancelMeetingRequest(BaseModel):
+class CancelMeetingRequest(BaseSchedulingRequest):
     """Request model for cancelling a meeting"""
-    requester_id: str
     meeting_id: str
     comment: Optional[str] = None
 
 
-class CreateWorkshopRequest(BaseModel):
+class CreateWorkshopRequest(BaseSchedulingRequest):
     """Request model for creating a workshop"""
-    requester_id: str
     subject: str
     participants: List[Participant]
     start_time: datetime
@@ -67,6 +70,8 @@ class CreateWorkshopRequest(BaseModel):
 
 
 __all__ = (
+    "BaseSchedulingRequest",
+    
     "FindTimeRequest",
     "BookMeetingRequest",
     "ViewScheduleRequest",

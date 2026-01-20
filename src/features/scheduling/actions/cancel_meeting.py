@@ -1,21 +1,40 @@
+from __future__ import annotations
 import logging
-from services.graph_service import GraphService
-from ..schemas import SchedulingResult, CancelMeetingRequest, CancelMeetingData
+from typing import TYPE_CHECKING
 
-logger = logging.getLogger("HRBot")
+from .base import BaseSchedulingAction
 
-class CancelMeetingAction:
-    def __init__(self, graph_service: GraphService):
-        self.graph_service = graph_service
+from ..schemas import requests as request_schemas
+from ..schemas import responses as response_schemas
 
-    async def execute(self, request: CancelMeetingRequest) -> SchedulingResult[CancelMeetingData]:
-        # STUB: To be implemented
-        logger.info(f"STUB: Cancelling meeting {request.meeting_id}")
-        
-        return SchedulingResult(
-            success=False,
-            error="CancelMeetingAction is not yet implemented."
+if TYPE_CHECKING:
+    # from services.graph_service import GraphService
+    pass
+
+
+logger = logging.getLogger(__name__)
+
+
+class CancelMeetingAction(
+    BaseSchedulingAction[
+        request_schemas.CancelMeetingRequest,
+        response_schemas.CancelMeetingResponse
+    ]
+):
+    async def _run(
+        self,
+        request: request_schemas.CancelMeetingRequest
+    ) -> response_schemas.SchedulingResult[response_schemas.CancelMeetingResponse]:
+        logger.info(f"MOCK: Cancelling meeting with ID: {request.meeting_id}")
+        cancelled_meeting = response_schemas.CancelMeetingResponse(
+            meeting_id=request.meeting_id,
+            status="Cancelled"
         )
-        
-__all__ = ["CancelMeetingAction"]
+        return response_schemas.SchedulingResult(
+            success=True,
+            data=cancelled_meeting
+        )
+__all__ = (
+    "CancelMeetingAction",
+)
 

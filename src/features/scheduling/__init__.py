@@ -1,24 +1,11 @@
 from .service import SchedulingService
+from .controller import SchedulingController
 from .module import SchedulingModule
 
 
-from .schemas import (
-    Participant,
-    SchedulingResult,
-    TimeSlot,
-    TimelineSlot,
-    MeetingData,
-    ScheduleGroup,
-)
-
-__all__ = [
+__all__ = (
     "SchedulingService",
-    "Participant",
-    "SchedulingResult",
-    "TimeSlot",
-    "TimelineSlot",
-    "MeetingData",
-    "ScheduleGroup",
+    "SchedulingController",
     "SchedulingModule",
-]
+)
 

@@ -18,7 +18,6 @@ from .views import (
     create_schedule_card
 )
 
-from .schemas import Participant
 from .mappers import SchedulingMapper
 
 

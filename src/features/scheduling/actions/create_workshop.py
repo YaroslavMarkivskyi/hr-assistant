@@ -1,21 +1,41 @@
+from __future__ import annotations
 import logging
-from services.graph_service import GraphService
-from ..schemas import SchedulingResult, CreateWorkshopRequest, CreateWorkshopData
+from typing import TYPE_CHECKING
 
-logger = logging.getLogger("HRBot")
+from .base import BaseSchedulingAction
 
-class CreateWorkshopAction:
-    def __init__(self, graph_service: GraphService):
-        self.graph_service = graph_service
+from ..schemas import requests as request_schemas
+from ..schemas import responses as response_schemas
 
-    async def execute(self, request: CreateWorkshopRequest) -> SchedulingResult[CreateWorkshopData]:
-        # STUB: To be implemented
-        logger.info(f"STUB: Creating workshop '{request.subject}'")
-        
-        return SchedulingResult(
-            success=False,
-            error="CreateWorkshopAction is not yet implemented."
+if TYPE_CHECKING:
+    # from services.graph_service import GraphService
+    pass
+
+
+logger = logging.getLogger(__name__)
+
+
+class CreateWorkshopAction(
+    BaseSchedulingAction[
+        request_schemas.CreateWorkshopRequest,
+        response_schemas.CreateWorkshopResponse
+    ]
+):
+    async def _run(
+        self,
+        request: request_schemas.CreateWorkshopRequest
+    ) -> response_schemas.SchedulingResult[response_schemas.CreateWorkshopResponse]:
+        logger.info(f"MOCK: Creating workshop with ID: {request.workshop_id}")
+        created_workshop = response_schemas.CreateWorkshopResponse(
+            workshop_id=request.workshop_id,
+            status="Created"
+        )
+        return response_schemas.SchedulingResult(
+            success=True,
+            data=created_workshop
         )
         
-__all__ = ["CreateWorkshopAction"]
+__all__ = (
+    "CreateWorkshopAction",
+)
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Generic, TypeVar, Optional, Dict, Any
 
 from schemas.shared import Participant
@@ -6,7 +6,13 @@ from schemas.shared import Participant
 from .shared import TimeSlot, TimelineSlot
 
 
-T = TypeVar('T', bound=BaseModel)
+class BaseSchedulingResponse(BaseModel):
+    """Base class for scheduling responses"""
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True
+    )
+T = TypeVar('T', bound=BaseSchedulingResponse)
 
 
 class SchedulingResult(BaseModel, Generic[T]):
@@ -19,7 +25,7 @@ class SchedulingResult(BaseModel, Generic[T]):
     resolved_participants: List[Participant] = []
     
     
-class FindTimeDataResponse(BaseModel):
+class FindTimeResponse(BaseSchedulingResponse):
     """Data returned from find time operation"""
     slots: List[TimeSlot]
     subject: str
@@ -27,7 +33,7 @@ class FindTimeDataResponse(BaseModel):
     participants: List[Participant]
 
 
-class BookMeetingData(BaseModel):
+class BookMeetingResponse(BaseSchedulingResponse):
     """Data returned from booking a meeting"""
     event_id: str
     subject: str
@@ -37,14 +43,14 @@ class BookMeetingData(BaseModel):
     organizer: str # Email or Name
 
 
-class DailyBriefingData(BaseModel):
+class DailyBriefingResponse(BaseSchedulingResponse):
     """Data returned from daily briefing"""
     events: List[Dict[str, Any]]
     date: str # ISO date
     event_count: int
 
 
-class ViewScheduleData(BaseModel):
+class ViewScheduleResponse(BaseSchedulingResponse):
     """Data returned from viewing schedule"""
     events: List[Dict[str, Any]] # Raw graph events
     timeline_slots: List[TimelineSlot]
@@ -53,7 +59,7 @@ class ViewScheduleData(BaseModel):
     employee_name: Optional[str] = None
 
 
-class UpdateMeetingData(BaseModel):
+class UpdateMeetingResponse(BaseSchedulingResponse):
     """Data returned from updating a meeting"""
     event_id: str
     update_field: str
@@ -61,13 +67,13 @@ class UpdateMeetingData(BaseModel):
     new_end_time: Optional[str] = None
 
 
-class CancelMeetingData(BaseModel):
+class CancelMeetingResponse(BaseSchedulingResponse):
     """Data returned from cancelling a meeting"""
     meeting_id: str
     status: str = "Cancelled"  # e.g., "Cancelled"
 
 
-class CreateWorkshopData(BaseModel):
+class CreateWorkshopResponse(BaseSchedulingResponse):
     """Data returned from creating a workshop"""
     event_id: str
     join_url: Optional[str] = None
@@ -75,12 +81,15 @@ class CreateWorkshopData(BaseModel):
 
 
 __all__ = (
+    "BaseSchedulingResponse",
+    
     "SchedulingResult",
-    "FindTimeDataResponse",
-    "BookMeetingData",
-    "DailyBriefingData",
-    "ViewScheduleData",
-    "UpdateMeetingData",
-    "CancelMeetingData",
-    "CreateWorkshopData",
+    "FindTimeResponse",
+    "BookMeetingResponse",
+    "DailyBriefingResponse",
+    "ViewScheduleResponse",
+    "UpdateMeetingResponse",
+    "CancelMeetingResponse",
+    "CreateWorkshopResponse",
 )
+

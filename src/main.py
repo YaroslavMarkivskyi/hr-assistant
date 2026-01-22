@@ -23,6 +23,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await init_app(app, settings)
     yield
     logger.info("FastAPI application shutting down")
+    
+    # TODO: Add any necessary cleanup logic here
 
 
 app = FastAPI(

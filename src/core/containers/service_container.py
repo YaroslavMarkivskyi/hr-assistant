@@ -7,7 +7,6 @@ from core.enums.bot import BotModule
 from core.base import BaseModule
 
 from services.ai import AIService
-from services.email_service import EmailService
 from services.graph_service import GraphService
 from services.time import TimeService
 from services.user_search import UserSearchService
@@ -33,7 +32,6 @@ class ServiceContainer:
     db: DatabaseService
     ai: AIService
     graph: GraphService
-    email: EmailService
     time: TimeService
     
     user_search: UserSearchService
@@ -55,7 +53,6 @@ class ServiceContainer:
         ai = AIService(config)
         time = TimeService()
         graph = GraphService(config=config, time_service=time)
-        email = EmailService(config)
         
         # System services
         classifier = RequestClassifier(ai_service=ai)
@@ -71,7 +68,6 @@ class ServiceContainer:
             db=db,
             ai=ai,
             graph=graph,
-            email=email,
             time=time,
             user_search=user_search,
             classifier=classifier,

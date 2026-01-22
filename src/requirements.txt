@@ -1,4 +1,4 @@
-# --- Core Framework (Оновлено до 4.15+) ---
+# --- Core Framework
 botbuilder-core>=4.17.0
 botbuilder-schema>=4.15.0
 botbuilder-integration-aiohttp>=4.15.0
@@ -8,6 +8,8 @@ botbuilder-azure
 # --- Azure & Auth ---
 azure-identity>=1.14.0
 azure-communication-email>=1.0.0
+msgraph-sdk
+
 
 # --- Web Server ---
 fastapi>=0.100.0

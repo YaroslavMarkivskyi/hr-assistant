@@ -26,7 +26,7 @@ class BaseController(ABC):
     Abstract base class for all module controllers.
     Defines the interface for handling actions and intents.
     """
-    def __init__(self, container: "ServiceContainer") -> None:
+    def __init__(self, container: ServiceContainer) -> None:
         self._container = container
 
     async def handle_action(

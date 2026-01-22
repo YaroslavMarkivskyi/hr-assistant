@@ -15,7 +15,7 @@ import logging
 from functools import wraps
 from typing import Callable, TypeVar, ParamSpec
 
-logger = logging.getLogger("HRBot")
+logger = logging.getLogger(__name__)
 
 P = ParamSpec('P')
 T = TypeVar('T')
@@ -89,7 +89,7 @@ def _get_retry_delay(error: Exception, base_delay: float, attempt: int) -> float
     if "429" in error_str or "rate limit" in error_str or "too many requests" in error_str:
         # Exponential backoff: base_delay * 2^(attempt + 1)
         exponential_delay = base_delay * (2 ** (attempt + 1))
-        logger.info(f"⏳ Rate limit detected, using exponential backoff: {exponential_delay:.1f}s")
+        logger.info(f"Rate limit detected, using exponential backoff: {exponential_delay:.1f}s")
         return exponential_delay
     
     # For other errors, use base delay
@@ -137,7 +137,7 @@ def retry_with_backoff(
                     last_error = e
                     if log_attempts:
                         logger.warning(
-                            f"⏱️ Timeout in {func.__name__} "
+                            f"Timeout in {func.__name__} "
                             f"(attempt {attempt + 1}/{max_retries + 1}): {e}"
                         )
                     if attempt < max_retries:
@@ -146,7 +146,7 @@ def retry_with_backoff(
                     else:
                         if log_attempts:
                             logger.error(
-                                f"❌ {func.__name__} timeout after {max_retries + 1} attempts"
+                                f"{func.__name__} timeout after {max_retries + 1} attempts"
                             )
                         raise
                         
@@ -156,7 +156,7 @@ def retry_with_backoff(
                     
                     if log_attempts:
                         logger.warning(
-                            f"⚠️ Error in {func.__name__} ({error_type}, "
+                            f"Error in {func.__name__} ({error_type}, "
                             f"attempt {attempt + 1}/{max_retries + 1}): {e}"
                         )
                     
@@ -168,7 +168,7 @@ def retry_with_backoff(
                     else:
                         if log_attempts:
                             logger.error(
-                                f"❌ {func.__name__} failed after {attempt + 1} attempt(s): {error_type}"
+                                f"{func.__name__} failed after {attempt + 1} attempt(s): {error_type}"
                             )
                         raise
             

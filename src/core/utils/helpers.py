@@ -19,7 +19,6 @@ def get_user_language(ctx: ActivityContext) -> Language:
     if hasattr(ctx.activity, 'locale') and ctx.activity.locale:
         locale = ctx.activity.locale
     elif hasattr(ctx.activity, 'from_property') and ctx.activity.from_property:
-        # Try to get locale from user properties if available
         locale = getattr(ctx.activity.from_property, 'locale', None)
     
     return Language.from_locale(locale or "")

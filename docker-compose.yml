@@ -1,5 +1,3 @@
-# Docker Compose automatically reads .env file from the project root
-# Create .env file with your variables (see .env.example)
 
 services:
   # FastAPI Application
@@ -9,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: hr-bot-fastapi
     ports:
-      - "${FASTAPI_PORT:-8000}:8000"  # Зовнішній порт можна змінити через .env (FASTAPI_PORT=8001)
+      - "${FASTAPI_PORT:-8000}:8000"
     environment:
       # Database
       - DB_HOST=postgres

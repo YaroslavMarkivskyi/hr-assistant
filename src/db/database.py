@@ -8,18 +8,14 @@ from sqlalchemy.exc import IntegrityError
 from typing import Optional, List
 from datetime import datetime
 
-# --- LEGACY Pydantic Models (Те, що очікує ваш старий код) ---
 from models.employee import Employee
 from models.leave_request import LeaveRequest, LeaveType, LeaveStatus
 
-# --- NEW DB Structure ---
 from db.base import Base
 
-# Імпорт моделей
 from db.models import EmployeeModel
 from features.time_off.models import LeaveRequestModel, TimeOffSettingsModel
 
-# Імпорт Enums з бази (використовуємо alias, щоб не плутати з Pydantic)
 from features.time_off.enums import LeaveType as DbLeaveType, LeaveRequestStatus as DbLeaveRequestStatus
 
 class DatabaseService:
@@ -77,7 +73,7 @@ class DatabaseService:
             
             if db_employee:
                 # Update existing
-                print(f"🔄 Updating existing employee: {employee.aad_id}")
+                print(f"Updating existing employee: {employee.aad_id}")
                 db_employee.full_name = employee.full_name
                 db_employee.email = employee.email
                 db_employee.manager_aad_id = employee.manager_aad_id
@@ -85,7 +81,7 @@ class DatabaseService:
                 db_employee.sick_balance = employee.sick_balance
             else:
                 # Create new
-                print(f"➕ Creating new employee in DB: {employee.aad_id}")
+                print(f"Creating new employee in DB: {employee.aad_id}")
                 db_employee = EmployeeModel(
                     aad_id=employee.aad_id,
                     full_name=employee.full_name,
@@ -125,19 +121,15 @@ class DatabaseService:
         finally:
             session.close()
     
-    # --- Leave request methods ---
-
     def create_leave_request(self, request: LeaveRequest) -> LeaveRequest:
         session = self._get_session()
         try:
-            # 1. Find Employee ID (Required for Foreign Key)
             stmt = select(EmployeeModel).where(EmployeeModel.aad_id == request.user_aad_id)
             employee_record = session.execute(stmt).scalar_one_or_none()
             
             if not employee_record:
                 raise ValueError(f"User with AAD ID {request.user_aad_id} not found in DB.")
 
-            # 2. Convert Pydantic Enum -> DB Enum
             try:
                 db_leave_type = DbLeaveType(request.leave_type.value)
                 db_status = DbLeaveRequestStatus(request.status.value)
@@ -256,9 +248,7 @@ class DatabaseService:
             return overlapping is not None
         finally:
             session.close()
-    
-    # --- Helpers: DB Model <-> Pydantic Model ---
-    
+        
     def _db_to_employee(self, db_employee: EmployeeModel) -> Employee:
         return Employee(
             id=db_employee.id,
